@@ -1,0 +1,638 @@
+#' Metadata and helper function for metadata
+#'
+#' Metadata and helper function to create a template metadata file or object.
+#'
+#' The [learn()] function needs metadata about the variates present in the data. Such metadata can be provided either as a `csv` file or as a [base::data.frame()]. The function `buildmetadata` creates a template metadata csv-file, or outputs a metadata data.frame, by trying to *guess* metadata information from the dataset.The guesses may be very incorrect (as already said, metadata is information not contained in the data, so no algorithm can exist that extracts it from the data). **The user *must* modify and correct this template, using it as a starting point to prepare the correct metadata information.**
+#'
+#' @param data A dataset, given as a [data frame][base::data.frame()]
+#' or as a file path to a csv file.
+#' @param file Character or `NULL` (default): name of csv file where the metadata should be saved; if `NULL`: output metadata as `VALUE`.
+#' @param includevrt Character or `NULL`: name of variates in dataset to be included.
+#' @param excludevrt Character or `NULL`: name of variates in dataset to be excluded.
+#' @param addsummary2metadata Logical: also output some diagnostic statistics
+#'    in the metadata? Default `FALSE`.
+#' @param backupfiles Logical: rename previous metadata file if it exists?
+#' Default `TRUE`.
+#' @param verbose Logical: output heuristics for each variate? Default `TRUE`.
+#'
+#' @return A preliminary [data frame][base::data.frame()] containing the metadata, [invisibly][base::invisible()] if `file = NULL`. If argument `file` is a character, a preliminary metadata file is also created with that name or path.
+#'
+#' @section Metadata information and format:
+#'
+#' In order to correctly learn from a dataset, the [learn()] function needs information that is not contained in the data themeselves; that is, it needs *meta*data. Metadata are provided either as a `csv` file or as a [base::data.frame()].
+#'
+#' A metadata file or data.frame must contain one row for each simple variate in the given inference problem, and the following fields (columns), even if some of them may be empty:
+#'
+#' `name`, `type`, `domainmin`, `domainmax`, `datastep`, `minincluded`, `maxincluded`, `V1`, `V2`, (possibly additional `V`-fields, sequentially numbered)
+#'
+#' The `type` field has three possible values: `nominal`, `ordinal`, `continuous`. The remaining fields that must be filled in depend on the `type` field. Here is a list of requirements:
+#'
+#' - **`nominal`** and **`ordinal`**: require *either* `V1`, `V2`, ... fields *or* `domainmin`, `domainmax`, `datastep` (all three) fields. No other fields are required.
+#'
+#' - **`continuous`**: requires `domainmin`, `domainmax`, `datastep`, `minincluded`, `maxincluded`.
+#'
+#' Here are the meanings and possible values of the fields:
+#'
+#' **`name`**: The name of the variate. This must be the same character string as it appears in the dataset (be careful about upper- and lower-case).
+#'
+#' **`type`**: The data type of variate `name`. Possible values are `nominal`, `ordinal`, `continuous`.
+#'
+#' - A *nominal* (also called *categorical*) variate has a discrete, finite number of possible values which have no intrinsic ordering. Examples could be a variate related to colour, with values "red", "green", "blue", and so on; or a variate related to cat breeds, with values "Siamese", "Abyssinian", "Persian", and so on. The possible values of the variate must be given in the fields `V1`, `V2`, and so on. It is important to include values that are possible but are *not* present in the dataset. A variate having only two possible values (binary variate), for example "yes" and "no", can be specified as nominal.
+#'
+#' - An *ordinal* variate has a discrete, finite number of possible values which do have an intrinsic ordering. Examples could be a Likert-scaled variate for the results of a survey, with values "very dissatisfied", "dissatisfied", "satisfied", "very satisfied"; or a variate related to the levels of some quantities, with values "low", "medium", "high"; or a variate having a numeric scale with values from 1 to 10. Whether a variate is nominal or ordinal often depends on the context. The possible values of the variate but be given in either one (but not both) or two ways: (1) in the fields `V1`, `V2`, ..., as for nominal variates; (2) as the fields `domainmin`, `domainmax`, `datastep`. Option (2) only works with numeric, equally spaced values: it assumes that the first value is `domainmin`, the second is `domainmin`+`datastep`, the third is `domainmin`+2*`datastep`, and so on up to the last value, `domainmax`.
+#'
+#' - A *continuous* variate has a continuum of values with an intrinsic ordering. Examples could be a variate related to the width of an object; or to the age of a person; or one coordinate of an object in a particular reference system. A continuous variate requires specification of the fields `domainmin`, `domainmax`, `datastep`, `minincluded`, `maxincluded`. Some naturally continuous variates are often rounded to a given precision; for instance, the age of a person might be reported as rounded to the nearest year (25 years, 26 years, and so on); or the length of an object might be reported to the nearest centimetre (1 m, 1.01 m, 1.02 m, and so on). The minimum distance between such rounded values **must** be reported in the `datastep` field; this would be `1` in the age example and `0.01` in the length example above. See below for further explanation of why reporting such rounding is important.
+#'
+#' **`domainmin`**: The minimum value that the variate (ordinal or continuous) can take on. Possible values are a real number or an empty value, which is then interpreted as `-Inf` (explicit values like `-Inf`, `-inf`, `-infinity` should also work). Some continuous variates, like age or distance or temperature, are naturally positive, and therefore have `domainmin` equal `0`. But in other contexts the minimum value could be different. For instance, if a given inference problem only involves people of age 18 or more, then `domainmin` would be set to `18`.
+#'
+#' **`domainmax`**: The maximum value that the variate (ordinal or continuous) can take on. Possible values are a real number, or an empty value, which is then interpreted as `+Inf` (explicit values like `Inf`, `inf`, `infinity` should also work). As with `domainmin`, the maximum value depends on the context. An age-related variate could theoretically have `domainmax` equal to infinity (empty value in the metadata file); but if a given study categorizes some people as "90 years old or older", then `domainmax` should be set to `90`.
+#'
+#' **`datastep`**: The minimum distance between the values of a variate (ordinal or continuous). Possible values are a positive real number or an empty value, which is then interpreted as 0 (the explicit value `0` is also accepted). For a numeric ordinal variate, `datastep` is the step between consecutive values. For a continuous *rounded* variate, `datastep` is the minimum distance between different values that occurs because of rounding; see the examples given above. The function `buildmetadata` has some heuristics to determine whether the variate is rounded or not. See further details under the section Rounding below.
+#'
+#' **`minincluded`**, **`maxincluded`**: Whether the minimum (`domainmin`) and maximum(`domainmax`) values of a *continuous* variate can really appear in the data or not. Possible values are `true` (or `t` or `yes`) or `false` (or `f`, `no`, or an empty field); upper- or lower-case is irrelevant. Here are some examples about the meaning of these fields. (a) A continuous *unrounded* variate such as temperature has 0 as a minimum possible value `domainmin`, but this value itself is physically impossible and can never appear in data; in this case `minincluded` is empty (or set to `false` or `no`). (b) A variate related to the *unrounded* length, in metres, of some objects may take on any positive real value; but suppose that all objects of length 5 or less are grouped together under the value `5`. It is then possible for several datapoints to have value `5`: one such datapoint could originally have the value 3.782341...; another the value 4.929673..., and so on. In this case `domainmin` is set to `5`, and `minincluded` is set to `true` (or `yes`). Similarly for the maximum value of a variate and `maxincluded`. Note that if `domainmin` is minus-infinity (empty value in the metadata file), then `minincluded` is automatically empty (that is, `false`), and similarly for `maxincluded` if `domainmax` is infinity.
+#'
+#' 
+## #' @section Necessity of metadata:
+## #'
+## #' To be written.
+#'
+#' @seealso
+#' [learn()], which generates the information necessary to calculate posterior probabilities, based on data and metadata.
+#'
+#' @examples
+#' ## Create a preliminary data frame of metadata for the `penguins` dataset
+#' metadata <- metadatatemplate(data = datasets::penguins, file = NULL)
+#'
+#' ## Note how the preliminary data frame includes additional spots
+#' ## for values of nominal and ordinal variates
+#' ## which could be missing from the data
+#' print(metadata)
+#'
+#'
+#' ## Create a preliminary data frame of metadata for the `penguins` dataset,
+#' ## including only the 'species' and 'bill_len' variates:
+#' metadata2 <- metadatatemplate(
+#'   data = datasets::penguins, file = NULL,
+#'   includevrt = c('species', 'bill_len')
+#' )
+#'
+#' print(metadata2)
+#'
+#'
+#' ## Create a preliminary data frame of metadata for the `penguins` dataset,
+#' ## excluding the 'year' variate:
+#' metadata3 <- metadatatemplate(
+#'   data = datasets::penguins, file = NULL,
+#'   excludevrt = 'year'
+#' )
+#'
+#' print(metadata3)
+#'
+#' ## Generate 10 points for a continuous variate in (0, 1)
+#' dataset <- runif(10)
+#'
+#' ## `metadatatemplate` correctly guesses the variate minimum,
+#' ## but not the maximum (`NA` is equivalent to `+Inf`)
+#' metadata <- metadatatemplate(data = dataset, file = NULL)
+#' print(metadata)
+#'
+#' @aliases metadata metadatatemplate
+#'
+#' @import stats
+#' @import utils
+#'
+#' @export
+metadatatemplate <- function(
+    data,
+    file = NULL,
+    includevrt = NULL,
+    excludevrt = NULL,
+    addsummary2metadata = FALSE,
+    backupfiles = FALSE,
+    verbose = TRUE
+) {
+
+    ## Greater Common Denominator function
+    ## used to calculate multiplicity of values of continuous variates
+    ## and guess whether they are rounded
+    gcd <- function(...) {
+        suppressWarnings(Reduce(function(a, b) {
+            if (b == 0) a else Recall(b, a %% b)
+        }, c(...)))
+    }
+
+    ## keywords to recognize ordinal variates
+    ordinalkeywords <- c('low', 'high', 'very', 'medium', 'strong',
+        'poor', 'good', 'always')
+
+    ## collect warning messages to be given at the end
+    warninglist <- NULL
+
+    ## Read datafile if it exists
+    datafile <- NULL
+    if (is.character(data) && file.exists(data)) {
+        datafile <- data
+        data <- read.csv(datafile,
+            na.strings = '', stringsAsFactors = FALSE, tryLogical = FALSE)
+    }
+    data <- as.data.frame(data)
+
+    ## convert factors to strings if necessary
+    if(any(sapply(data, is.factor))){
+    if(verbose){ message('Converting factors to characters') }
+        . <- sapply(data, is.factor)
+        data[, .] <- lapply(data[, ., drop = FALSE], as.character)
+    }
+
+#### Prepare empty metadata frame
+    metadata <- as.data.frame(
+        c(list(name = NA,
+            type = NA,
+            domainmin = NA,
+            domainmax = NA,
+            datastep = NA,
+            minincluded = NA,
+            maxincluded = NA
+            ## lowvalue = NA,
+            ## centralvalue = NA,
+            ## highvalue = NA,
+            ## plotmin = NA,
+            ## plotmax = NA
+        ),
+        setNames(as.list(rep(NA, 11)), paste0('V', 1:11)),
+            if (addsummary2metadata) {
+                list(datamin = NA,
+                    datamax = NA,
+                    datamaxrep = NA,
+                    dataNvalues = NA)
+            }
+        )
+    )[-1, ]
+
+    ## build list of variates, including only those in 'includevrt'
+    ## and excluding those in 'excludevrt'
+    variatelist <- colnames(data)
+    if(!is.null(includevrt)) {
+        variatelist <- intersect(variatelist, includevrt)
+    }
+    if(!is.null(excludevrt)) {
+        variatelist <- setdiff(variatelist, excludevrt)
+    }
+
+    if(verbose){message('Analyzing', length(variatelist), 'variates for',
+        nrow(data), 'datapoints.') }
+
+    ## Loop over variates (columns) in data frame
+    for (name in variatelist) {
+        if(verbose){ message('* "', name, '" variate:') }
+        ## remove missing values
+        x <- data[[name]]
+        x <- x[!is.na(x)]
+
+        ## ## Factors are now dealt with at the beginning
+        ## ## check if it's a 'factor' object and transform
+        ## if(is.factor(x)){
+        ##     x <- as.character(x)
+        ## }
+
+        unx <- sort(unique(x))
+        uniquex <- length(unx)
+
+        ## if this variate has only one value, give a special warning
+        if (uniquex < 2) {
+            ## if(verbose){
+            ##     message('  Only one value present.')
+            ## }
+            warninglist <- c(warninglist,
+                paste0('\n* "', name, '" variate',
+                    ' does not have at least two distinct values.',
+                    ## '\nDiscarded because non-informative.',
+                    '\nPlease insert its characteristics by hand in the metadata file.'))
+            ## next
+        }
+
+        ## If the values are strings,
+        ## check whether they can be reinterpreted as numeric
+        if(!is.numeric(unx) &&
+               !any(is.na(suppressWarnings(as.numeric(unx))))) {
+            x <- as.numeric(x)
+            unx <- sort(as.numeric(unx))
+        }
+
+        ## If the variate is numeric and has more than two values,
+        ## calculate several characteristics used later
+        if (is.numeric(unx) && uniquex > 2) {
+            ## these two are used for diagnostic purposes
+            datamin <- min(x)
+            datamax <- max(x)
+            ## values strictly within the interior of the domain
+            ix <- x[!(x %in% range(x))]
+            maxrep <- max(table(ix)) # max of repeated inner values
+            meanrep <- mean(table(ix)) # average of repeated inner values
+            ## differences between consecutive unique values
+            jumpsx <- unique(signif(diff(unx), 3))
+            rangex <- diff(range(x))
+            multi <- 10^(-min(floor(log10(jumpsx))))
+            ## jumps between unique values are integer multiples
+            ## of 'jumpquantum'
+            jumpquantum <- gcd(jumpsx * multi) / multi
+            datavalues <- NULL
+        } else {
+            datavalues <- as.character(unx)
+            unx <- as.character(unx)
+        }
+
+### Check whether the variate has been first rounded
+### and then transformed to logarithmic scale.
+### This may lead to problems
+        if(is.numeric(unx) && datamin > 0 && uniquex > 2) {
+            for(base in c(2, exp(1), 10)) {
+                ljumpsx <- unique(signif(diff(log(unx, base)), 3))
+                lrangex <- diff(log(range(x), base))
+                lmulti <- 10^(-min(floor(log10(ljumpsx))))
+                ## jumps between unique values are integer multiples
+                ## of 'jumpquantum'
+                ljumpquantum <- gcd(ljumpsx * lmulti) / lmulti
+                if (!(
+                    ljumpquantum / lrangex < 1e-5 || # no visible gaps between values
+                        (ljumpquantum / lrangex < 1e-3 &&
+                             maxrep <= 100)  # visible gaps, but not many value repetitions
+                )) {
+                    warninglist <- c(warninglist,
+                        paste0('\n* "', name, '" variate',
+                            ' appears to have been rounded\n',
+                            'and then transformed to logarithmic scale.\n',
+                            'This may lead to problems in the inference.\n',
+                            'Preferably, transform it back to non-logarithmic scale.'))
+                    break
+                }
+            }
+        }
+
+#### Now make educated guess for the type of variate
+
+        ## #### For the moment binary variates counted within nominal ones
+        ## if (uniquex == 2) {
+        ##     ## Binary variate? (has only two unique values)
+        ##     type <- 'binary'
+        ##     Nvalues <- 2
+        ##     datastep <- NA
+        ##     domainmin <- NA
+        ##     domainmax <- NA
+        ##     minincluded <- NA
+        ##     maxincluded <- NA
+        ##     ## lowvalue <- NA
+        ##     ## centralvalue <- NA
+        ##     ## highvalue <- NA
+        ##     plotmin <- NA
+        ##     plotmax <- NA
+        ##     names(datavalues) <- paste0('V', 1:2)
+        ##     ##
+        ##     if(verbose){
+        ##         message('  Two different values detected:\n',
+        ##             paste0('"', datavalues, '"', collapse=', '))
+        ##         message('  Assuming variate to be BINARY.')
+        ##     }
+        ##
+        ## } else
+            if (uniquex <= 2 || (!is.numeric(x) &&
+                       !any(sapply(ordinalkeywords, function(keyw){
+                           grepl(keyw, datavalues, fixed = TRUE)
+                       })))) {
+            ## Nominal variate? (non-numeric values)
+            type <- 'nominal'
+            Nvalues <- uniquex
+            domainmin <- NA
+            domainmax <- NA
+            datastep <- NA
+            minincluded <- NA
+            maxincluded <- NA
+            ## lowvalue <- NA
+            ## centralvalue <- NA
+            ## highvalue <- NA
+            ## plotmin <- NA
+            ## plotmax <- NA
+            names(datavalues) <- paste0('V', 1:Nvalues)
+            ##
+            if(verbose){
+                message('  - ', Nvalues, ' different values detected:\n',
+                    paste0('"', datavalues, '"', collapse = ', '))
+                message('  which do not seem to refer to an ordered scale.')
+                message('  Assuming variate to be NOMINAL.')
+            }
+
+        } else if (!is.numeric(x)) {
+            ## Nominal variate? (non-numeric values)
+            ## Ordinal variate with few numeric values?
+            type <- 'ordinal'
+            Nvalues <- uniquex
+            domainmin <- NA
+            domainmax <- NA
+            datastep <- NA
+            minincluded <- NA
+            maxincluded <- NA
+            ## lowvalue <- NA
+            ## centralvalue <- NA
+            ## highvalue <- NA
+            ## plotmin <- NA
+            ## plotmax <- NA
+            names(datavalues) <- paste0('V', 1:Nvalues)
+            ##
+            if(verbose){
+                message('  - ', Nvalues, ' different non-numeric values detected:\n',
+                    paste0('"', datavalues, '"', collapse = ', '))
+                message('  which seem to refer to an ordered scale.')
+                message('  Assuming variate to be ORDINAL.')
+                message('  Please appropriately reorder its values in metadata file.')
+            }
+            warninglist <- c(warninglist,
+                paste0('\n* "', name, '" variate',
+                    ' appears to be ordinal.',
+                    '\nPlease appropriately reorder its values in metadata file.'))
+
+
+#### Now we know that the variate is numeric
+
+        } else if (uniquex <= 10 &&
+                       (all(x == round(x)) || jumpquantum == round(jumpquantum))) {
+            ## Ordinal variate with few numeric values?
+            type <- 'ordinal'
+            Nvalues <- uniquex
+            ## if the values are spaced by an integer,
+            ## no need to use the 'V' fields
+            if(jumpquantum == round(jumpquantum)) {
+                datastep <- jumpquantum
+                domainmin <- datamin
+                domainmax <- datamax
+                datavalues <- NULL
+            } else {
+                domainmin <- NA
+                domainmax <- NA
+                datastep <- NA
+                datavalues <- as.character(unx)
+                names(datavalues) <- paste0('V', 1:Nvalues)
+            }
+            minincluded <- NA
+            maxincluded <- NA
+            ## lowvalue <- NA
+            ## centralvalue <- NA
+            ## highvalue <- NA
+            ## plotmin <- NA
+            ## plotmax <- NA
+            ##
+            if(verbose){
+                message('  - Only', Nvalues, ' different numeric values detected:\n')
+                if(jumpquantum == round(jumpquantum)) {
+                    message('from ', domainmin, ' to ', domainmax,
+                        ' in steps of ', jumpquantum)
+                } else {
+                    message(paste0('"', datavalues, '"', collapse = ', '))
+                }
+                message('  Assuming variate to be ORDINAL.')
+            }
+
+            ## #### This categorization is not used in the present version
+            ## } else if (uniquex <= 10 && ) {
+            ##     ## Ordinal variate with many numeric values?
+            ##     type <- 'ordinal'
+            ##     Nvalues <- uniquex
+            ##     datastep <- jumpquantum
+            ##     domainmin <- datamin
+            ##     domainmax <- datamax
+            ##     minincluded <- NA
+            ##     maxincluded <- NA
+            ##     ## lowvalue <- NA
+            ##     ## centralvalue <- NA
+            ##     ## highvalue <- NA
+            ##     plotmin <- NA
+            ##     plotmax <- NA
+            ##     datavalues <- NULL
+            ##     ##
+            ##     if(verbose){
+            ##         message(' - ', Nvalues, ' different numeric values detected')
+            ##         message('  distance between datapoints is a multiple of integer',
+            ##             jumpquantum)
+            ##         message('  Assuming variate to be ORDINAL.')
+            ##     }
+            ##     warninglist <- c(warninglist,
+            ##         paste0('* "', name, '" variate',
+            ##             ' appears to be ordinal,',
+            ##             '\nbut it could also be a rounded continous variate'))
+
+
+        } else {
+            ## The variate seems continuous
+            type <- 'continuous'
+            Nvalues <- Inf
+            ## preliminary values, possibly modified below
+            datastep <- NA
+            domainmin <- NA # signif(datamax - 3 * rangex, 1)
+            domainmax <- NA # signif(datamax + 3 * rangex, 1)
+
+            ## Q1 <- quantile(x = x, probs = 0.25, type = 6)
+            ## centralvalue <- quantile(x = x, probs = 0.5, type = 6)
+            ## Q3 <- quantile(x = x, probs = 0.75, type = 6)
+            ## ## Borderline case if the first and second quartile have the same value
+            ## if (lowvalue == highvalue) {
+            ##   lowvalue <- if (sum(x < Q1) > 0) {
+            ##                 max(x[x < Q1])
+            ##               } else {
+            ##                 max(x[x <= Q1])
+            ##               }
+            ##   highvalue <- if (sum(x > Q3) > 0) {
+            ##                  min(x[x > Q3])
+            ##                } else {
+            ##                  min(x[x >= Q3])
+            ##                }
+            ## }
+            ## plotmin <- datamin - IQR(x, type=6) / 2
+            ## plotmax <- datamax + IQR(x, type=6) / 2
+            datavalues <- NULL
+            ##
+            if(verbose){
+                message('  - Numeric values between ',
+                    datamin, ' and ', datamax)
+                message('  Assuming variate to be CONTINUOUS.')
+            }
+
+            roundedflag <- FALSE
+#### Consider subcases for datastep
+            ## for rounded variates it doesn't matter whether the boundaries
+            ## are included in the domain or not
+            if (!(
+                jumpquantum / rangex < 1e-5 || # no visible gaps between values
+                    (jumpquantum / rangex < 1e-3 &&
+                         maxrep <= 100)  # visible gaps, but not many value repetitions
+            )) {
+                roundedflag <- TRUE
+                ## The variate seems to have quantized differences
+                ## between unique values
+                ## hence it might be rounded or integer/ordinal
+
+                ## if(rangex / datastep > 256) {
+                ##   ## The variate seems rounded,
+                ##   ## but no latent-variable representation is needed
+                ##   message('\nNOTE: variate ', name, ' is probably rounded,\n',
+                ##           'but is treated as not rounded ',
+                ##           'owing to its large range of values.\n')
+                ##   datastep <- 0
+                ## } else {
+                datastep <- jumpquantum
+                minincluded <- maxincluded <- NA
+                ##
+                if(verbose){
+                    message('  - Distance between datapoints is a multiple of ',
+                        jumpquantum)
+                    message('  Assuming variate to be ROUNDED.')
+                }
+                if(jumpquantum >=1) {
+                    warninglist <- c(warninglist,
+                        paste0('\n* "', name, '" variate',
+                            ' appears to be continuous and rounded,',
+                            '\nbut it could also be an ordinal variate'))
+                }
+                ## domainmin <- signif(datamin - 4 * rangex, 1)
+                ## domainmax <- signif(datamax + 4 * rangex, 1)
+
+            } # End rounded case
+
+
+#### Consider subcases for closedness of domain
+            if(!roundedflag){
+                minincluded <- NA
+                maxincluded <- NA
+            }
+            if (sum(x == datamin) > 1) {
+                ## seems to have left-closed domain
+                domainmin <- datamin
+                ## plotmin <- datamin
+                if(!roundedflag){
+                    minincluded <- 'true'
+                }
+                ##
+                if(verbose){
+                    message('  - Several datapoints have minimum value ',
+                        datamin)
+                    message('  Assuming "domainmin" to be this minimum observed value')
+                    if(!roundedflag){
+                        message('  and to be included in the domain (singular probabilities there).')
+                    }
+                }
+            } else if (all(unx > 0)) {
+                ## seems to be strictly positive
+                domainmin <- 0
+                ## plotmin <- max((domainmin + datamin) / 2, plotmin)
+                if(!roundedflag){
+                    minincluded <- NA
+                }
+                ##
+                if(verbose){
+                    message('  - All values are positive')
+                    message('  Assuming "domainmin" to be 0')
+                    if(!roundedflag){
+                        message('  with 0 excluded from domain.')
+                    }
+                }
+            } else if (all(unx >= 0)) {
+                ## seems to be non-negative
+                domainmin <- 0
+                ## plotmin <- max((domainmin + datamin) / 2, plotmin)
+                if(!roundedflag){
+                    minincluded <- 'true'
+                }
+                ##
+                if(verbose){
+                    message('  - All values are non-negative')
+                    message('  Assuming "domainmin" to be 0')
+                    if(!roundedflag){
+                        message('  with 0 included in the domain.')
+                    }
+                }
+            }
+
+            if (sum(x == datamax) > meanrep) {
+                ## seems to right-closed domain
+                domainmax <- datamax
+                ## plotmax <- datamax
+                if(!roundedflag){
+                    maxincluded <- 'true'
+                }
+                ##
+                if(verbose){
+                    message('  - Many datapoints have maximum value ',
+                        datamax)
+                    message('  Assuming "domainmax" to be this maximum observed value')
+                    if(!roundedflag){
+                        message('  and to be included in the domain (singular probabilities there).')
+                    }
+                }
+            }
+
+        } # End continuous-variate case
+
+#### Create metadata object
+        metadata <- merge(metadata,
+            c(
+                list(name = name,
+                    type = type,
+                    ## Nvalues = Nvalues,
+                    domainmin = domainmin,
+                    domainmax = domainmax,
+                    datastep = datastep,
+                    minincluded = minincluded,
+                    maxincluded = maxincluded
+                    ## lowvalue = signif(lowvalue,3),
+                    ## centralvalue = signif(centralvalue,3),
+                    ## highvalue = signif(highvalue,3),
+                    ## plotmin = signif(plotmin,2),
+                    ## plotmax = signif(plotmax,2)
+                ),
+                if (addsummary2metadata) {
+                    list(datamin = datamin,
+                        datamax = datamax,
+                        datamaxrep = max(table(x)),
+                        dataNvalues = uniquex)
+                },
+                as.list(datavalues)
+            ),
+            sort = FALSE, all = TRUE)
+    } # End loop over variates
+
+    ## Print warnings
+    if(!is.null(warninglist)){
+        message(
+            '=========',
+            '\nWARNINGS',
+            ' - please make sure to check these variates in the metadata file:')
+        for(awarning in warninglist){message(awarning)}
+        message('=========')
+    }
+
+    ## Save to file if the file parameter is set
+    if (!(is.null(file) || isFALSE(file))) {
+        ## If file is a string, name the metadata file that
+        if (is.character(file)) {
+            file <- paste0(sub('.csv$', '', file), '.csv')
+        }
+        ## If file is not a string, and the data is read from a file,
+        ## save the metadata as metadata_<datafile>.csv
+        else if (!is.null(datafile)) {
+            file <- paste0(sub('.csv$', '', file), '_metadata.csv')
+        }
+        ## If the file already exists, rename the old file as a backup file
+        ## and name this metadata file as intended
+        if (backupfiles) {
+            if (file.exists(file)) {
+                file.rename(from = file, to = paste0(sub('.csv$', '', file), '_bak', format(Sys.time(), '%y%m%dT%H%M%S'), '.csv'))
+            }
+        }
+        ## Save the file and print invisibly
+        pwrite.csv(metadata, file)
+        message('\nSaved proposal metadata file as ',
+            paste0('"', file, '"'))
+        invisible(metadata)
+    } else {
+        ## Else just print to console
+        metadata
+    }
+}
