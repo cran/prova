@@ -4,15 +4,17 @@
 #' Compute the posterior joint probability distribution of the variates conditional on the given data, by means of Markov-chain Monte Carlo, using the package **Nimble**.
 #'
 #' @details
-#' This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its variability. From this full joint distribution any other distributions of interest can subsequently be computed; see [Pr()] and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the *whole population*, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is *principled*, made according to the rules of probability theory.
+#' To use this function, the package [**Nimble**](https://cran.r-project.org/package=nimble) needs to be installed.
 #'
-#' The output is a "learnt" object, typically saved in a `learnt.rds` file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
+#' This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its "revisability". From this full joint distribution any other distributions of interest can subsequently be computed; see [Pr()] and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the *whole population*, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is *principled*, made according to the rules of probability theory.
+#'
+#' The output is a "prova_K" (knowledge) object, typically saved in a `K.rds` file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
 #'
 #' See `vignette('intro')` for introductory examples.
 #'
 #' The computation is "non-parametric": probability or frequency distributions are not assumed to be Gaussian or of any other specific shape; no "model" is assumed. The mathematical representation of the space of joint frequency distributions follows ideas of Dunson & Bhattacharya (2011); see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details.
 #'
-#' The computation is done via Markov-chain Monte Carlo, using the package [**Nimble**](https://cran.r-project.org/package=nimble). "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details. The default values for convergence require that all of the following three conditions be fulilled:
+#' The computation is done via Markov-chain Monte Carlo, using the package **Nimble**. "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details. The default values for convergence require that all of the following three conditions be fulilled:
 #'
 #' - The computation's numerical error (Monte-Carlo Standard Error) for the posterior probability must be smaller than 4.7% of the standard deviation of the posterior's variability.
 #'  - The computation's numerical error for the 0.055- and 0.945-percentiles of the posterior's variability should be smaller than 4.7% of the distance between them.
@@ -28,7 +30,7 @@
 #'   data = 'filename_with_data.csv', # CSV file containing the dataset
 #'   metadata = 'filename_with_metadata.csv', # CSV file containing the metadata
 #'   outputdir = 'some_directory', # path to output directory
-#'   parallel = 8 # machine has more than 8 cores, so we use 8
+#'   parallel = 8 # let's say machine has more than 8 cores, so we use 8
 #'   ## possibly other arguments to learn()
 #' )
 #' ```
@@ -36,20 +38,24 @@
 #' and then be called on a bash terminal with
 #'
 #' ```
-#' $ Rscript myscript.R > learnoutput.log 2>&1 &
+#' $ Rscript myscript.R > learnoutput.out 2>&1 &
 #' ```
 #'
-#' with such a call, the file 'learnoutput.log' will contain information about how the computation is proceeding and the estimated end time.
+#' with such a call, the file 'learnoutput.out' will contain information about how the computation is proceeding and the estimated end time.
 #'
 #' @param data A dataset, given as a [base::data.frame()] or as a file path to a CSV file. If missing or `NULL`, then the prior probability distribution is calculated.
 #' @param metadata [metadata] about the dataset's variates, given either as a [data frame][base::data.frame()] or as a file path to a CSV file.
-#' @param auxdata A larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but can still be used to help estimate some hyperparameters.
+#' @param auxdata An *additional*, larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but is used to help estimate some hyperparameters. Note that the `auxdata` and `data` datasets should *not* have datapoints in common.
 #' @param outputdir `NULL` (default) or `NA` or character: path to folder where output information and diagnostics should be saved. If `NULL`, a directory is created in the temporary-directory space given by [base::tempdir()]. If `NA`, a directory is created in the current working directory given by [base::getwd()]. If character, this is taken to be the output directory; it should of course be writable by the user.
-#' @param valueislearnt Logical or `NULL`: should the `VALUE` returned be the `learnt` object containing the results from the Monte Carlo computation? Default `TRUE`. If `FALSE`, then `VALUE` is the output directory name. If `NULL`, then `VALUE` is `NULL`.
+#' @param valueisK Logical or `NULL`: should the `VALUE` returned be the `K`nowledge object containing the results from the Monte Carlo computation? Default `TRUE`. If `FALSE`, then `VALUE` is the output directory name. If `NULL`, then `VALUE` is `NULL`.
 #' @param nsamples Integer, default 3600: number of desired, *approximately independent* Monte Carlo samples. If this argument is changed, the user is also required to explicitly give either `nchains` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
 #' @param nchains Integer, default 8: number of Monte Carlo chains. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
 #' @param nsamplesperchain Integer, default 450: number of *approximately independent* Monte Carlo samples per chain. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nchains`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
-#' @param parallel Logical or positive integer or cluster object. `TRUE` (default): use roughly half of available cores; `FALSE` (default): use serial computation; integer: use this many cores. It can also be a cluster object previously created with [parallel::makeCluster()]; in this case the parallel computation will use this object.
+#' @param parallel One of the following values:
+#' - A "cluster" object previously created with [parallel::makeCluster()].
+#' - Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+#' - `FALSE`: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+#' - `TRUE` (default): use the cluster that was set as default with [parallel::setDefaultCluster()]; if no such object exists, then generate a cluster with as many nodes as in the [option][base::getOption()] "cl.cores"; if this option is unset, then use 2 nodes.
 #' @param seed Integer or `NULL` (default): use this seed for the random number generator. If `NULL`, do not set the seed.
 #' @param cleanup Logical, default `TRUE`: remove diagnostic files at the end of the computation?
 #' @param appendinfo Logical, default `TRUE`: append information about number of variates ('V'), number of data points ('D'), number of Monte Carlo samples ('S'), and timestamp, to the name of the output directory `outputdir`? The appended string has the format 'Vn_Dn_Sn_YYMMDDTHHMMSS'.
@@ -60,23 +66,23 @@
 #' @param maxMCiterations Integer, default `Inf`: Do at most this many Monte Carlo iterations per chain.
 #' @param maxhours Numeric, default `Inf`: approximate time limit, in hours, for the Monte Carlo computation to last.
 #' @param ncheckpoints Integer or `NULL`, default 12: number of datapoints (per chain) to use for checking when the Monte Carlo computation should end. If `NULL`, this is equal to number of variates + 2. If Inf, use all datapoints.
-#' @param maxrelMCSE Numeric positive, default `+Inf`: desired maximal *relative Monte Carlo Standard Error* of calculated probabilities with respect to their variability with new data. The default `+Inf` means that `minESS` is used instead. `maxrelMCSE` is related to `minESS` by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.
+#' @param maxrelMCSE Numeric positive, default `+Inf`: desired maximal *relative Monte Carlo Standard Error* of calculated probabilities. The default `+Inf` means that `minESS` is used instead. `maxrelMCSE` is related to `minESS` by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.
 #' @param minESS Numeric positive or `NULL`, default 450: desired minimal Monte Carlo *Expected Sample Size*. If `NULL`, it is equal to the final `nsamplesperchain`. `minESS` is related to `maxrelMCSE` by \eqn{\mathrm{minESS} = 1/\mathrm{maxrelMCSE}^2 - \mathrm{initES}}.
-#' @param initES Numeric positive, default 2: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.
+#' @param initES Numeric positive, default 8: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.
 #' @param thinning Integer or `NULL` (default): thin out the Monte Carlo samples by this value. If `NULL`: let the diagnostics decide the thinning value.
-#' @param verbose Logical, default `TRUE`: output the progress to terminal? If `FALSE`, the progress is outputted to the file `'main.log'` in the `outputdir` directory.
+#' @param verbose Logical, default `TRUE`: output the progress to terminal? If `FALSE`, the progress is outputted to the file `'main.out'` in the `outputdir` directory.
 #' @param plottraces Logical, default `TRUE`: save plots of the Monte Carlo traces of diagnostic values?
 #' @param showKtraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the K parameter?
 #' @param showAlphatraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the Alpha parameter?
 #' @param hyperparams List: hyperparameters of the hyperprior; see values in "Usage".
 #'
-#' @returns A "learnt" object, or name of directory containing such an object and other output files, or `NULL`, depending on argument `valueislearnt`.
+#' @returns A "prova_K" (knowledge) object, or name of directory containing such an object and other output files, or `NULL`, depending on argument `valueisK`.
 #'
 #' `learn()` saves several files in a directory. By default this output directory is a temporary directory within the one used by [base::tempdir()], but an alternative one can be chosen with the argument `outputdir =`. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
 #'
-#' - `MCtraces.pdf`: shows several trace plots of the Monte Carlo sampling; the correspondin data are in the file `MCtraces.rds`.
-#' - `plotsamples_learnt.pdf`, `plotquantiles_learnt.pdf`: show the marginal posterior distributions of each individual variate, together with their variability (as samples or quantiles).
-#' - `log-1.log`, `log-2.log`, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
+#' - `MCtraces.pdf`: shows several trace plots of the Monte Carlo sampling; the corresponding data are in the file `MCtraces.rds`.
+#' - `plotsamples_learn.pdf`, `plotquantiles_learn.pdf`: show the marginal posterior distributions of each individual variate, together with their "revisability" (as samples or quantiles).
+#' - `log-1.out`, `log-2.out`, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
 #' - `rng_seed.rds`: the state of the pseudorandom seed (see [base::Random]) when `learn()` was called.
 #' - `metadata.csv`: a copy of the metadata.
 #'
@@ -93,22 +99,23 @@
 #' About Bayesian inference under exchangeability ("population inference"):
 #'
 #' - Lindley, Novick (1981): *The role of exchangeability in inference*, <doi:10.1214/aos/1176345331>.
-#' - Bernardo, Smith (2000): *Bayesian Theory*. Wiley <doi:10.1002/9780470316870>.
+#' - Bernardo, Smith (2000): *Bayesian Theory*, Wiley <doi:10.1002/9780470316870>.
+#' - Fortini, Petrone (2024): *Prediction-based uncertainty quantification for exchangeable sequences*, <doi:10.1098/rsta.2022.0142>.
 #' - Porta Mana <https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf>.
 #'
 #' About nonparametrics:
 #'
-#' - Müller et al. (2015): *Nonparametric Bayesian inference*. IMS <doi:10.1007/978-3-319-18968-0>.
-#' - Hjort et al. (2010): *Bayesian Nonparametrics*. Cambridge University Press <doi:10.1017/CBO9780511802478>.
+#' - Müller et al. (2015): *Nonparametric Bayesian inference*, IMS <doi:10.1007/978-3-319-18968-0>.
+#' - Hjort et al. (2010): *Bayesian Nonparametrics*, Cambridge University Press <doi:10.1017/CBO9780511802478>.
 #'
 #' About Markov-chain Monte Carlo and "convergence":
 #'
-#' - de Valpine, Paciorek, Turek, & al. (2026): *NIMBLE: MCMC, Particle Filtering, and Programmable Hierarchical Modeling* <doi:10.5281/zenodo.1211190>, <https://cran.r-project.org/package=nimble>.
-#' - Kwon & al. (2025): *MCMC stopping rules in latent variable modelling* <doi:10.1111/bmsp.12357>.
-#' - Vehtari & al. (2021): *Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC* <doi:10.1214/20-BA1221>.
-#' - Roy (2020): *Convergence diagnostics for Markov chain Monte Carlo* <doi:10.1146/annurev-statistics-031219-041300>.
-#' - Gilks & al. (1998): *Markov Chain Monte Carlo in Practice*. Chapman & Hall/CRC <doi:10.1201/b14835>.
-#' - D. J. C. MacKay (2005): *Information Theory, Inference, and Learning Algorithms*. Cambridge University Press <https://www.inference.org.uk/itila/book.html>.
+#' - de Valpine, Paciorek, Turek, & al. (2026): *NIMBLE: MCMC, Particle Filtering, and Programmable Hierarchical Modeling*, <doi:10.5281/zenodo.1211190>, <https://cran.r-project.org/package=nimble>.
+#' - Kwon & al. (2025): *MCMC stopping rules in latent variable modelling*, <doi:10.1111/bmsp.12357>.
+#' - Vehtari & al. (2021): *Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC*, <doi:10.1214/20-BA1221>.
+#' - Roy (2020): *Convergence diagnostics for Markov chain Monte Carlo*, <doi:10.1146/annurev-statistics-031219-041300>.
+#' - Gilks & al. (1998): *Markov Chain Monte Carlo in Practice*, Chapman & Hall/CRC <doi:10.1201/b14835>.
+#' - D. J. C. MacKay (2005): *Information Theory, Inference, and Learning Algorithms*, Cambridge University Press <https://www.inference.org.uk/itila/book.html>.
 #' - Porta Mana <https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf>.
 #'
 #'
@@ -134,7 +141,7 @@
 #' metadata <- data.frame(name = 'V', type = 'continuous')
 #'
 #' ## Learn from the data:
-#' learnt <- learn(
+#' K <- learn(
 #'   data = dataset, metadata = metadata,
 #'       ## the following parameters are unrealistic
 #'       ## only used to reduce computation time for this example
@@ -143,8 +150,8 @@
 #'   minESS = 0, initES = 0
 #' )
 #'
-#' ## Check structure of `learnt` object:
-#' str(learnt)
+#' ## Check structure of `K` object:
+#' str(K)
 #' }
 #'
 #' @import grDevices
@@ -153,8 +160,8 @@
 #' @import stats
 #' @import utils
 #'
+#' @concept learn
 #' @export
-## #' @rawNamespace import(nimble, except = rcat)
 learn <- function(
     data,
     metadata,
@@ -167,7 +174,7 @@ learn <- function(
     seed = NULL,
     cleanup = TRUE,
     appendinfo = TRUE,
-    valueislearnt = TRUE,
+    valueisK = TRUE,
     subsampledata = NULL,
     prior = missing(data) || is.null(data),
     startupMCiterations = 3600,
@@ -177,7 +184,7 @@ learn <- function(
     ncheckpoints = 12,
     maxrelMCSE = +Inf,
     minESS = 450,
-    initES = 2,
+    initES = 8,
     thinning = NULL,
     verbose = TRUE,
     plottraces = !cleanup,
@@ -349,29 +356,37 @@ learn <- function(
     ## Number of cores is reduced if larger than 'nchains':
     ## doesn't make sense to have more cores than chains
     closeexit <- FALSE
-    if ('cluster' %in% class(parallel)){
+    if (inherits(parallel, "cluster")){
         ## user provides a cluster object
-        cl <- parallel
+        ## use only as many nodes as necessary
+        cl0 <- parallel # this will be used in plotFsamples
+        ncores <- min(nchains, length(cl0))
+        cl <- cl0[seq_len(ncores)]
     } else if (isTRUE(parallel)) {
-        ## user wants us to register a parallel backend
+        ## user wants us to check for or register a parallel backend
         ## and to choose number of cores
-        ncores <- max(1,
-            min(nchains, floor(parallel::detectCores() / 2)))
-        cl <- parallel::makeCluster(ncores)
-        closeexit <- TRUE
-        predirmsgs <- c(predirmsgs, list(
-            paste0('Registered ', capture.output(print(cl)), '.')
-        ))
+        cl0 <- parallel::getDefaultCluster()
+        if(is.null(cl0)){
+            ncores <- min(nchains, getOption("cl.cores", 2))
+            cl0 <- cl <- parallel::makeCluster(ncores)
+            closeexit <- TRUE
+            predirmsgs <- c(predirmsgs, list(
+                paste0('Registered ', capture.output(print(cl)), '.')
+            ))
+        } else {
+            ncores <- min(nchains, length(cl0))
+            cl <- cl0[seq_len(ncores)]
+        }
     } else if (isFALSE(parallel)) {
         ## user wants us not to use parallel cores
         ncores <- 1
-        cl <- parallel::makeCluster(ncores)
+        cl0 <- cl <- parallel::makeCluster(ncores)
         closeexit <- TRUE
     } else if (is.numeric(parallel) &&
                    is.finite(parallel) && parallel >= 1) {
         ## user wants us to register 'parallel' # of cores
         ncores <- min(nchains, parallel)
-        cl <- parallel::makeCluster(ncores)
+        cl0 <- cl <- parallel::makeCluster(ncores)
         closeexit <- TRUE
         predirmsgs <- c(predirmsgs, list(
             paste0('Registered ', capture.output(print(cl)), '.')
@@ -431,7 +446,8 @@ learn <- function(
                 maxincluded = 'character'
             ))
     }
-    metadata <- as.data.frame(metadata)
+
+    if(!is.data.frame(metadata)){ metadata <- as.data.frame(metadata) }
 
     ## eliminate possible empty V-columns
     for(i in intersect(paste0('V', 11:3), colnames(metadata))){
@@ -456,7 +472,8 @@ learn <- function(
                 stop('Cannot find data file')
             }
         }
-        data <- as.data.frame(data)
+
+        if(!is.data.frame(data)){ data <- as.data.frame(data) }
         rownames(data) <- NULL
 
         ## convert factors to strings if necessary
@@ -500,8 +517,8 @@ learn <- function(
             predirmsgs <- c(predirmsgs, list(
                 'Subsampling data, as requested.'
             ))
-            data <- data[sample(seq_len(nrow(data)),
-                min(subsampledata, nrow(data)),
+            data <- data[sample.int(n = nrow(data),
+                size = min(subsampledata, nrow(data)),
                 replace = FALSE), ]
         }
 
@@ -531,7 +548,8 @@ learn <- function(
                 stop('Cannot find auxdata file')
             }
         }
-        auxdata <- as.data.frame(auxdata)
+
+        if(!is.data.frame(auxdata)){auxdata <- as.data.frame(auxdata)}
 
         ## Consistency checks for auxdata
         ## They should be moved to an external function
@@ -554,10 +572,10 @@ learn <- function(
         ## Remove empty datapoints
         tokeep <- which(apply(auxdata, 1, function(xx) { !all(is.na(xx)) }))
         if(length(tokeep) == 0 && !prior) {
-            stop('Auxdata are given but empty')
+            stop("'auxdata' is given but empty")
         } else if(length(tokeep) < nrow(auxdata)) {
             predirmsgs <- c(predirmsgs, list(
-                '"auxdata" contain empty datapoints. Dropping them.'
+                "'auxdata' contain empty datapoints. Dropping them."
             ))
             auxdata <- auxdata[tokeep, , drop = FALSE]
         }
@@ -570,8 +588,8 @@ learn <- function(
 
     ## Build auxiliary metadata object; we'll save it later
     ## message('Calculating auxiliary metadata.')
-    auxmetadata <- buildauxmetadata(
-        data = (if (is.null(auxdata)) {data} else {auxdata}),
+    auxmetadata <- .buildauxmetadata(
+        data = if(is.null(auxdata)){data}else{rbind(data, auxdata)},
         metadata = metadata,
         Dthreshold = Dthreshold,
         tscalefactor = tscalefactor
@@ -584,7 +602,7 @@ learn <- function(
     ))
 
 #### Output-folder setup
-    prefix <- paste0(
+    suffix <- paste0(
         'V', nrow(auxmetadata),
         '_D',
         (if (npoints == 1 && all(is.na(data))) {
@@ -597,19 +615,19 @@ learn <- function(
         '_', format(Sys.time(), '%y%m%dT%H%M%S')
     )
     if(is.null(outputdir)){
-        if(!isTRUE(valueislearnt)) {
-            warning('With the chosen "outputdir" and "valueislearnt" arguments, results are not saved to a persistent directory and not outputted; they will likely be lost.')
+        if(!isTRUE(valueisK)) {
+            warning('With the chosen "outputdir" and "valueisK" arguments, results are not saved to a persistent directory and not outputted; they will likely be lost.')
         }
         ## Use a temporary output directory
-        dirname <- tempfile(pattern = paste0('prova-', prefix, '_'))
+        dirname <- tempfile(pattern = paste0('prova-', suffix, '_'))
     } else if (is.na(outputdir)) {
         ## Create unique output directory within current directory
-        dirname <- tempfile(pattern = paste0('prova-', prefix, '_'),
+        dirname <- tempfile(pattern = paste0('prova-', suffix, '_'),
             tmpdir = getwd())
     } else if (is.character(outputdir)) {
         ## Create directory specified by user
         dirname <- outputdir
-        if (appendinfo){ dirname <- paste0(dirname, '-', prefix) }
+        if (appendinfo){ dirname <- paste0(dirname, '-', suffix) }
     } else {
         stop('Invalid "outputdir" argument')
     }
@@ -621,7 +639,7 @@ learn <- function(
 
     ## Create main log file in output directory
     ## also keep printing to terminal if verbose = TRUE
-    mainlog <- file.path(dirname, 'main.log')
+    mainlog <- file.path(dirname, 'main.out')
     maincon0 <- file(mainlog, open = 'w')
     closecons0 <- function(){
         ## Close output to main log file
@@ -680,8 +698,9 @@ learn <- function(
         ## (using extra memory)
         ## Each chain uses a different set of testdata
         for(achain in 0:nchains) {
-            pointsid <- sort(sample(seq_len(npoints), min(ncheckpoints, npoints)))
-            testdata <- util_prepPcheckpoints(
+            pointsid <- sort(sample.int(n = npoints,
+                size = min(ncheckpoints, npoints), replace = FALSE))
+            testdata <- .prepPcheckpoints(
                 x = data[pointsid, , drop = FALSE],
                 auxmetadata = auxmetadata,
                 pointsid = pointsid
@@ -706,8 +725,8 @@ learn <- function(
                                    c('R', 'C', 'D', 'L')) {
                                 rnorm(n = ncheckpoints, mean = 0, sd = 2)
                             } else {
-                                sample(seq_len(auxmetadata[ii, 'Nvalues']),
-                                    ncheckpoints,
+                                sample.int(n = auxmetadata[ii, 'Nvalues'],
+                                    size = ncheckpoints,
                                     replace = TRUE) +
                                     auxmetadata[ii, 'indexpos']
                             }
@@ -781,13 +800,13 @@ learn <- function(
 
     ## Load auxiliary functions from external files
     ## source('samplesFDistribution.R')
-    ## source('plotFsamples.R')
+    ## source('.plotFsamples.R')
     ## source('tplotfunctions.R')
-    ## source('vtransform.R')
+    ## source('.vtransform.R')
     ## ## These are used within the foreach core loop
     ## source('proposeburnin.R')
     ## source('proposethinning.R')
-    ## source('mcsubset.R')
+    ## source('.mcsubset.R')
 
 
 
@@ -852,13 +871,13 @@ learn <- function(
                 Cvar1 = rep(1, 1),
                 Cshapelo = rep(Cshapelo, 1),
                 Cshapehi = rep(Cshapehi, 1),
-                Cleft = as.matrix(vtransform(data[, vnames$C, drop = FALSE],
+                Cleft = as.matrix(.vtransform(data[, vnames$C, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Cout = 'left', logjacobianOr = NULL)),
-                Cright = as.matrix(vtransform(data[, vnames$C, drop = FALSE],
+                Cright = as.matrix(.vtransform(data[, vnames$C, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Cout = 'right', logjacobianOr = NULL)),
-                Clatinit = as.matrix(vtransform(data[, vnames$C, drop = FALSE],
+                Clatinit = as.matrix(.vtransform(data[, vnames$C, drop = FALSE],
                     auxmetadata,
                     Cout = 'init', logjacobianOr = NULL))
             )
@@ -874,13 +893,13 @@ learn <- function(
                 Dvar1 = rep(1, 1),
                 Dshapelo = rep(Dshapelo, 1),
                 Dshapehi = rep(Dshapehi, 1),
-                Dleft = as.matrix(vtransform(data[, vnames$D, drop = FALSE],
+                Dleft = as.matrix(.vtransform(data[, vnames$D, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Dout = 'left', logjacobianOr = NULL)),
-                Dright = as.matrix(vtransform(data[, vnames$D, drop = FALSE],
+                Dright = as.matrix(.vtransform(data[, vnames$D, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Dout = 'right', logjacobianOr = NULL)),
-                Dlatinit = as.matrix(vtransform(data[, vnames$D, drop = FALSE],
+                Dlatinit = as.matrix(.vtransform(data[, vnames$D, drop = FALSE],
                     auxmetadata,
                     Dout = 'init', logjacobianOr = NULL))
             )
@@ -893,13 +912,13 @@ learn <- function(
         ##         Lvar1 = rep(1, 1),
         ##         Lshapelo = rep(Lshapelo, 1),
         ##         Lshapehi = rep(Lshapehi, 1),
-        ##         Lleft = as.matrix(vtransform(data[, vnames$L, drop = FALSE],
+        ##         Lleft = as.matrix(.vtransform(data[, vnames$L, drop = FALSE],
         ##             auxmetadata = auxmetadata,
         ##             Lout = 'left')),
-        ##         Lright = as.matrix(vtransform(data[, vnames$L, drop = FALSE],
+        ##         Lright = as.matrix(.vtransform(data[, vnames$L, drop = FALSE],
         ##             auxmetadata = auxmetadata,
         ##             Lout = 'right')),
-        ##         Llatinit = as.matrix(vtransform(data[, vnames$L, drop = FALSE],
+        ##         Llatinit = as.matrix(.vtransform(data[, vnames$L, drop = FALSE],
         ##             auxmetadata,
         ##             Lout = 'init'))
         ##     )
@@ -976,52 +995,52 @@ learn <- function(
     datapoints <- c(
         if (vn$R > 0) { # continuous open domain
             list(
-                Rdata = as.matrix(vtransform(data[, vnames$R, drop = FALSE],
+                Rdata = as.matrix(.vtransform(data[, vnames$R, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Rout = 'normalized', logjacobianOr = NULL))
             )
         },
         if (vn$C > 0) { # continuous closed domain
             list(
-                Caux = as.matrix(vtransform(data[, vnames$C, drop = FALSE],
+                Caux = as.matrix(.vtransform(data[, vnames$C, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Cout = 'aux', logjacobianOr = NULL)),
-                Clat = as.matrix(vtransform(data[, vnames$C, drop = FALSE],
+                Clat = as.matrix(.vtransform(data[, vnames$C, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Cout = 'lat', logjacobianOr = NULL))
             )
         },
         if (vn$D > 0) { # continuous rounded
             list(
-                Daux = as.matrix(vtransform(data[, vnames$D, drop = FALSE],
+                Daux = as.matrix(.vtransform(data[, vnames$D, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Dout = 'aux', logjacobianOr = NULL))
             )
         },
         ## if (vn$L > 0) { # latent
         ##     list(
-        ##         Laux = as.matrix(vtransform(data[, vnames$L, drop = FALSE],
+        ##         Laux = as.matrix(.vtransform(data[, vnames$L, drop = FALSE],
         ##             auxmetadata = auxmetadata,
         ##             Lout = 'aux'))
         ##     )
         ## },
         if (vn$O > 0) { # nominal
             list(
-                Odata = as.matrix(vtransform(data[, vnames$O, drop = FALSE],
+                Odata = as.matrix(.vtransform(data[, vnames$O, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Oout = 'numeric', logjacobianOr = NULL))
             )
         },
         if (vn$N > 0) { # nominal
             list(
-                Ndata = as.matrix(vtransform(data[, vnames$N, drop = FALSE],
+                Ndata = as.matrix(.vtransform(data[, vnames$N, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Nout = 'numeric', logjacobianOr = NULL))
             )
         },
         if (vn$B > 0) { # binary
             list(
-                Bdata = as.matrix(vtransform(data[, vnames$B, drop = FALSE],
+                Bdata = as.matrix(.vtransform(data[, vnames$B, drop = FALSE],
                     auxmetadata = auxmetadata,
                     Bout = 'numeric', logjacobianOr = NULL))
             )
@@ -1065,7 +1084,7 @@ learn <- function(
 
     ## Close output to main log file
     close(maincon0)
-    
+
 #####################################################
 #### BEGINNING OF PARALLEL LOOP OVER CORES
 #####################################################
@@ -1083,8 +1102,8 @@ learn <- function(
     chaininfo <- parallel::parLapply(
         cl = cl,
         X = 1:ncores,
-        fun = workerfun,
-        ## arguments to workerfun
+        fun = .workerfun,
+        ## arguments to .workerfun
         dirname = dirname,
         dashnameroot = dashnameroot,
         avoidzeroW = avoidzeroW,
@@ -1157,19 +1176,22 @@ learn <- function(
             ))
     }
 
-    ## Read the samples saved by each chain and concatenate them
-    ## could be moved to a separate file?
+    ## Function for reading & concatenating samples saved by each chain
     joinmc <- function(mc1, mc2) {
-        mapply(
-            function(xx, yy) {
-                temp <- c(xx, yy)
-                dx <- dim(yy)[-length(dim(yy))]
-                dim(temp) <- c(dx, length(temp) / prod(dx))
-                temp
-            },
-            mc1, mc2,
-            SIMPLIFY = FALSE
-        )
+        if(is.null(mc1)){
+            mc2
+        }else{
+            mapply(
+                function(xx, yy) {
+                    temp <- c(xx, yy)
+                    dx <- dim(yy)[-length(dim(yy))]
+                    dim(temp) <- c(dx, length(temp) / prod(dx))
+                    temp
+                },
+                mc1, mc2,
+                SIMPLIFY = FALSE
+            )
+        }
     }
 
 ## mcsamples0 <- foreach(chainnumber = 1:nchains,
@@ -1182,21 +1204,16 @@ learn <- function(
 ##             ))
 ##         }
 
-    for(chainnumber in 1:nchains){
-        padchainnumber <- sprintf(paste0('%0', nchar(nchains), 'i'), chainnumber)
-        if(chainnumber == 1){
-            mcsamples <- readRDS(file = file.path(dirname,
+    mcsamples <- NULL
+    for(chainnumber in seq_len(nchains)){
+        padchainnumber <- sprintf(paste0('%0', nchar(nchains), 'i'),
+            chainnumber)
+        mcsamples <- joinmc(mcsamples,
+            readRDS(file = file.path(dirname,
                 paste0('___mcsamples', dashnameroot, '--',
                     padchainnumber, '.rds')
             ))
-        } else {
-            mcsamples <- joinmc(mcsamples,
-                readRDS(file = file.path(dirname,
-                    paste0('___mcsamples', dashnameroot, '--',
-                        padchainnumber, '.rds')
-                ))
-            )
-        }
+        )
     }
 
     ## chainnumber <- 1
@@ -1218,7 +1235,7 @@ learn <- function(
     ## }
 
 #### Save all final parameters together with some aux metadata in one file
-    learnt <- c(mcsamples, list(
+    K <- c(mcsamples, list(
         auxmetadata = auxmetadata,
         auxinfo = list(
             nchains = nchains,
@@ -1231,10 +1248,10 @@ learn <- function(
         )
     ))
     rm(mcsamples)
-    ## The 'learnt' object is preliminarily saved as soon as possible,
+    ## The 'prova_K' (knowledge) object is preliminarily saved as soon as possible,
     ## in case something crashes during subsequent diagnostics
-    saveRDS(learnt,
-        file = file.path(dirname, paste0('___learnt', dashnameroot, '.rds'))
+    saveRDS(K,
+        file = file.path(dirname, paste0('___K', dashnameroot, '.rds'))
     )
 
     ## This is to delete the last 'estimated end time'
@@ -1280,28 +1297,28 @@ learn <- function(
     print2user('\nChecking test data\n(',
         paste0('#', testdata$pointsid, collapse = ' '), '):')
 
-    oktraces <- util_Pcheckpoints(
+    oktraces <- .Pcheckpoints(
         testdata = testdata,
-        learnt = learnt
+        K = K
     )
 
     ## Substitute variances for standard deviations
-    if(!is.null(learnt$Rvar)){
-        learnt$Rvar <- sqrt(learnt$Rvar)
-        names(learnt)[which(names(learnt) == 'Rvar')] <- 'Rsd'
+    if(!is.null(K$Rvar)){
+        K$Rvar <- sqrt(K$Rvar)
+        names(K)[which(names(K) == 'Rvar')] <- 'Rsd'
     }
-    if(!is.null(learnt$Cvar)){
-        learnt$Cvar <- sqrt(learnt$Cvar)
-        names(learnt)[which(names(learnt) == 'Cvar')] <- 'Csd'
+    if(!is.null(K$Cvar)){
+        K$Cvar <- sqrt(K$Cvar)
+        names(K)[which(names(K) == 'Cvar')] <- 'Csd'
     }
-    if(!is.null(learnt$Dvar)){
-        learnt$Dvar <- sqrt(learnt$Dvar)
-        names(learnt)[which(names(learnt) == 'Dvar')] <- 'Dsd'
+    if(!is.null(K$Dvar)){
+        K$Dvar <- sqrt(K$Dvar)
+        names(K)[which(names(K) == 'Dvar')] <- 'Dsd'
     }
 
-    ## Save 'learnt' object
-    saveRDS(learnt,
-        file = file.path(dirname, paste0('learnt', dashnameroot, '.rds'))
+    ## Save 'prova_K' (knowledge) object
+    saveRDS(K,
+        file = file.path(dirname, paste0('K', dashnameroot, '.rds'))
     )
 
 
@@ -1340,7 +1357,7 @@ learn <- function(
         ## Calculate credibility intervals (proxy for MCSE)
         ## for the empirical quantiles above
         ## as in Vehtari et al. 2021
-        temp <- funMCEQ(x = atrace, prob = c(Qlo, Qhi), Qpair = Qerror)
+        temp <- .funMCEQ(x = atrace, prob = c(Qlo, Qhi), Qpair = Qerror)
         wXlo <- temp[2, 1] - temp[1, 1]
         wXhi <- temp[2, 2] - temp[1, 2]
 
@@ -1351,7 +1368,7 @@ learn <- function(
         ## and Blom 1958 sect 6.10 eqn (6.10.5)
         ## (alternative (6.10.3) gives roughly same results
         ## but is computationally slightly more expensive)
-        essnrmean <- funESS3(qnorm(
+        essnrmean <- .funESS3(qnorm(
         (rank(atrace, na.last = NA, ties.method = 'average') - 0.5) / N
         ))
 
@@ -1380,9 +1397,10 @@ learn <- function(
         'average' = colMeans(oktraces),
         'quantile width' = jointdiagn[4, ]
     )
-    learnt$auxinfo <- c(learnt$auxinfo, toprint)
-    saveRDS(learnt,
-        file = file.path(dirname, paste0('learnt', dashnameroot, '.rds'))
+    K$auxinfo <- c(K$auxinfo, toprint)
+    class(K) <- 'prova_K'
+    saveRDS(K,
+        file = file.path(dirname, paste0('K', dashnameroot, '.rds'))
     )
 
 ####
@@ -1409,7 +1427,7 @@ learn <- function(
     for (avar in 1:ncol(oktraces)) {
         ## Do not join separate chains in the plot
         division <- (if(N > nchains) nchains else 1)
-        flexiplot(
+        pplot(
             y = 10*log10(oktraces[is.finite(oktraces[, avar]), avar]),
             ## x = matrix(seq_len(nsamples), ncol = division),
             ## y = matrix(10*log10(oktraces[, avar]), ncol = division),
@@ -1434,26 +1452,26 @@ learn <- function(
             lty = 2, col = 2, lwd = 1)
     }
 
-    plotFsamples(
+    .plotFsamples(
         filename = file.path(dirname,
-            paste0('plotsamples_learnt', dashnameroot)),
-        learnt = learnt,
+            paste0('plotsamples_learn', dashnameroot)),
+        K = K,
         data = data,
         plotvariability = 'samples',
         nFsamples = showsamples, plotprobability = TRUE,
         datahistogram = TRUE, datascatter = TRUE,
-        parallel = cl
+        parallel = cl0
     )
 
-    plotFsamples(
+    .plotFsamples(
         filename = file.path(dirname,
-            paste0('plotquantiles_learnt', dashnameroot)),
-        learnt = learnt,
+            paste0('plotquantiles_learn', dashnameroot)),
+        K = K,
         data = data,
         plotvariability = 'quantiles',
         nFsamples = plotDisplayedQuantiles, plotprobability = TRUE,
         datahistogram = TRUE, datascatter = TRUE,
-        parallel = cl
+        parallel = cl0
     )
 
     totalfinaltime <- difftime(Sys.time(), timestart0, units = 'auto')
@@ -1495,9 +1513,9 @@ learn <- function(
 
 
     ## What should we output? how about the full name of the output dir?
-    if (isTRUE(valueislearnt)) {
-        learnt
-    } else if (isFALSE(valueislearnt)) {
+    if (isTRUE(valueisK)) {
+        K
+    } else if (isFALSE(valueisK)) {
         dirname
     }
 }
@@ -1514,7 +1532,7 @@ learn <- function(
 #' @import utils
 #'
 #' @keywords internal
-workerfun <- function(
+.workerfun <- function(
     acore,
     dirname,
     dashnameroot,
@@ -1580,7 +1598,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     ## Redirect diagnostics and service messages there
     outcon <- file(file.path(dirname,
         paste0('log', dashnameroot,
-            '-', acore, '.log')
+            '-', acore, '.out')
     ), open = 'w')
     sink(file = outcon, type = 'output', split = FALSE)
     sink(file = outcon, type = 'message', split = FALSE)
@@ -1960,7 +1978,8 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
 
             outlist <- list(
                 Alpha = round(constants$nalpha/2),
-                W = rep(1/constants$ncomponents, constants$ncomponents),
+                W = rep.int(x = 1/constants$ncomponents,
+                    times = constants$ncomponents),
                 ## ## Assign every point to the closest component centre
                 K = K
                 ## ## Other assignment methods:
@@ -2017,7 +2036,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                         Cvar = Cvars,
                         ## for data with boundary values
                         Clat = constants$Clatinit
-                        ## Clat = vtransform(data[, vnames$C, with = FALSE],
+                        ## Clat = .vtransform(data[, vnames$C, with = FALSE],
                         ##   auxmetadata, Cout = 'init')
                     )
                 )
@@ -2036,7 +2055,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                         Dvar = Dvars,
                         ## for data with boundary values
                         Dlat = constants$Dlatinit
-                        ## Dlat = vtransform(data[, vnames$D, with = FALSE],
+                        ## Dlat = .vtransform(data[, vnames$D, with = FALSE],
                         ##   auxmetadata, Dout = 'init')
                     )
                 )
@@ -2056,7 +2075,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ##                 nrow = vn$L, ncol = constants$ncomponents),
             ##             ## for data with boundary values
             ##             Llat = constants$Llatinit
-            ##             ## Llat = vtransform(data[, vnames$L, with = FALSE],
+            ##             ## Llat = .vtransform(data[, vnames$L, with = FALSE],
             ##             ##   auxmetadata, Lout = 'init')
             ##         )
             ##     )
@@ -2065,8 +2084,9 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 outlist <- c(
                     outlist,
                     list(
-                        Oprob = matrix(unlist(sapply(constants$Ocards, function(acard){
-                            rep(1 / acard, acard)
+                        Oprob = matrix(unlist(sapply(constants$Ocards,
+                            function(acard){
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ocards), ncol = ncomponents)
                     )
                 )
@@ -2076,7 +2096,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Nprob = matrix(unlist(sapply(constants$Ncards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ncards), ncol = ncomponents)
                     )
                 )
@@ -2098,7 +2118,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
         ## pre-clustering, centering on data
         initsfn <- function() {
             ## assign each cluster to a datapoint
-            iK <- sample(seq_len(constants$npoints), constants$ncomponents,
+            iK <- sample.int(constants$npoints, size = constants$ncomponents,
                 replace = (constants$npoints < constants$ncomponents))
 
             ## Create components centres
@@ -2197,7 +2217,8 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
 
             outlist <- list(
                 Alpha = round(constants$nalpha/2),
-                W = rep(1/constants$ncomponents, constants$ncomponents),
+                W = rep.int(x = 1/constants$ncomponents,
+                    times = constants$ncomponents),
                 ## ## Assign every point to the closest component centre
                 K = K
                 ## ## Other assignment methods:
@@ -2256,8 +2277,6 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                             nrow = vn$C, ncol = constants$ncomponents),
                         ## for data with boundary values
                         Clat = constants$Clatinit
-                        ## Clat = inferno:::vtransform(data[, vnames$C, with = FALSE],
-                        ##   auxmetadata, Cout = 'init')
                     )
                 )
             }
@@ -2276,8 +2295,6 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                             nrow = vn$D, ncol = constants$ncomponents),
                         ## for data with boundary values
                         Dlat = constants$Dlatinit
-                        ## Dlat = inferno:::vtransform(data[, vnames$D, with = FALSE],
-                        ##   auxmetadata, Dout = 'init')
                     )
                 )
             }
@@ -2296,8 +2313,6 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ##                 nrow = vn$L, ncol = constants$ncomponents),
             ##             ## for data with boundary values
             ##             Llat = constants$Llatinit
-            ##             ## Llat = inferno:::vtransform(data[, vnames$L, with = FALSE],
-            ##             ##   auxmetadata, Lout = 'init')
             ##         )
             ##     )
             ## }
@@ -2306,7 +2321,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Oprob = matrix(unlist(sapply(constants$Ocards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ocards), ncol = ncomponents)
                     )
                 )
@@ -2316,7 +2331,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Nprob = matrix(unlist(sapply(constants$Ncards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ncards), ncol = ncomponents)
                     )
                 )
@@ -2338,14 +2353,16 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     } else if(initmethod == 'prior'){
         ## values chosen from prior
         initsfn <- function() {
-            Alpha <- sample(1:constants$nalpha, 1, prob = probalpha0[1:constants$nalpha])
+            Alpha <- sample.int(n = constants$nalpha, size = 1,
+                prob = probalpha0[1:constants$nalpha])
             W <- nimble::rdirch(n = 1,
                 alpha = constants$dirchalphas[1:constants$ncomponents] *
                     constants$alphabase^Alpha)
             outlist <- list(
                 Alpha = Alpha,
                 W = W,
-                K = sample(rep(which(W > 0), 2), constants$npoints, replace = TRUE)
+                K = sample(x = rep.int(x = which(W > 0), times = 2),
+                    size = constants$npoints, replace = TRUE)
             )
             ##
             if (vn$R > 0) { # continuous open domain
@@ -2436,7 +2453,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Oprob = matrix(unlist(sapply(constants$Ocards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ocards), ncol = ncomponents)
                     )
                 )
@@ -2476,9 +2493,10 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             initvar <- 6
             outlist <- list(
                 Alpha = round(constants$nalpha/2),
-                W = rep(1/constants$ncomponents, constants$ncomponents),
+                W = rep.int(x = 1/constants$ncomponents,
+                    times = constants$ncomponents),
                 ## ## Assign every point to first component
-                K = rep(1, constants$npoints)
+                K = rep.int(x = 1, times = constants$npoints)
             )
             ##
             if (vn$R > 0) { # continuous open domain
@@ -2535,7 +2553,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Oprob = matrix(unlist(sapply(constants$Ocards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ocards), ncol = ncomponents)
                     )
                 )
@@ -2545,7 +2563,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     outlist,
                     list(
                         Nprob = matrix(unlist(sapply(constants$Ncards, function(acard){
-                            rep(1 / acard, acard)
+                            rep.int(x = 1 / acard, times = acard)
                         })), nrow = sum(constants$Ncards), ncol = ncomponents)
                     )
                 )
@@ -2567,9 +2585,10 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
         initsfn <- function() {
             outlist <- list(
                 Alpha = round(constants$nalpha/2),
-                W = rep(1/constants$ncomponents, constants$ncomponents),
+                W = rep_len(x = 1/constants$ncomponents,
+                    length.out = constants$ncomponents),
                 ## ## Assign every point to first component
-                K = rep(1, constants$npoints)
+                K = rep.int(x = 1, times = constants$npoints)
             )
             ##
             if (vn$R > 0) { # continuous open domain
@@ -3054,7 +3073,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     mcsamples <- NULL
                     niter <- 0
                 } else {
-                    mcsamples <- mcsubset(mcsamples, -toRemove)
+                    mcsamples <- .mcsubset(mcsamples, -toRemove)
                     niter <- niter - length(toRemove)
                 }
             }
@@ -3089,9 +3108,9 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             diagntime <- Sys.time()
             ##
 
-            ll <- util_Pcheckpoints(
+            ll <- .Pcheckpoints(
                 testdata = testdata,
-                learnt = mcsamples
+                K = mcsamples
             )
 
             ll <- cbind(
@@ -3161,7 +3180,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ## Calculate credibility intervals (proxy for MCSE)
             ## for the empirical quantiles above
             ## as in Vehtari et al. 2021
-            temp <- funMCEQ(x = oktraces, prob = c(Qlo, Qhi), Qpair = Qerror)
+            temp <- .funMCEQ(x = oktraces, prob = c(Qlo, Qhi), Qpair = Qerror)
             wXlo <- temp[2, 1] - temp[1, 1]
             wXhi <- temp[2, 2] - temp[1, 2]
 
@@ -3172,7 +3191,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ## and Blom 1958 sect 6.10 eqn (6.10.5)
             ## (alternative (6.10.3) gives roughly same results
             ## but is computationally slightly more expensive)
-            essnrmean <- funESS3(qnorm(
+            essnrmean <- .funESS3(qnorm(
             (rank(oktraces, na.last = NA, ties.method = 'average') - 0.5) / N
             ))
 
@@ -3220,11 +3239,11 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ## add overall iteration index `MCindex` to mcsamples
             mcsamples$MCindex <- seq(to = nitertot,
                 length.out = ncol(mcsamples$W))
-            ## need to add 1D to behave well with mcsubset()
+            ## need to add 1D to behave well with .mcsubset()
             dim(mcsamples$MCindex) <- ncol(mcsamples$W)
 
             ## concatenate samples
-                allmcsamples <- mcjoin(allmcsamples, mcsamples)
+                allmcsamples <- .mcjoin(allmcsamples, mcsamples)
 
             if (is.null(allmcsamplesKA)) {
                 allmcsamplesKA <- mcsamplesKA
@@ -3364,7 +3383,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 ## on.exit(par(oldpar), add = TRUE)
 
                 for (avar in 1:ncol(traces)) {
-                    flexiplot(
+                    pplot(
                         y = 10*log10(traces[is.finite(traces[, avar]), avar]),
                         type = 'l', lty = 1, col = 1,
                         main = paste0('#', colnames(traces)[avar], ': ',
@@ -3399,9 +3418,9 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     cat('\nSTATS USED COMPONENTS:\n')
                     print(summary(allmcsamplesKA$K))
                     ##
-                    flexiplot(y = allmcsamplesKA$K, ylab = 'used components',
+                    pplot(y = allmcsamplesKA$K, ylab = 'used components',
                         xlab = 'iteration', ylim = c(0, ncomponents))
-                    flexiplot(x = 0:ncomponents,
+                    pplot(x = 0:ncomponents,
                         y = tabulate(allmcsamplesKA$K + 1, nbins = ncomponents + 1),
                         type = 'l', xlab = 'used components', ylab = NA,
                         ylim = c(0, NA))
@@ -3409,10 +3428,10 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 if (showAlphatraces) {
                     cat('\nSTATS alpha:\n')
                     print(summary(allmcsamplesKA$Alpha, na.rm = TRUE))
-                    flexiplot(y = allmcsamplesKA$Alpha,
+                    pplot(y = allmcsamplesKA$Alpha,
                         ylab = bquote(alpha), xlab = 'iteration',
                         ylim = c(1, nalpha))
-                    flexiplot(x = seq(minalpha, maxalpha, by = byalpha),
+                    pplot(x = seq(minalpha, maxalpha, by = byalpha),
                         y = tabulate(allmcsamplesKA$Alpha, nbins = nalpha),
                         type = 'l', xlab = bquote(alpha), ylab = '',
                         ylim = c(0, NA))
@@ -3465,11 +3484,11 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                     padchainnumber, '-',
                     chunk, '.rds')
             ))
-            tempmcsamples <- mcsubset(tempmcsamples,
+            tempmcsamples <- .mcsubset(tempmcsamples,
                 which(tempmcsamples$MCindex %in% tokeep)
             )
 
-                allmcsamples <- mcjoin(allmcsamples, tempmcsamples)
+                allmcsamples <- .mcjoin(allmcsamples, tempmcsamples)
         }
 
         ## Save thinned total chain
@@ -3509,8 +3528,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
 #### END LOOP OVER CHAINS (WITHIN ONE CORE)
 
     ##
-    cat('\nCurrent time:',
-        format(Sys.time(), '%Y-%m-%d %H:%M:%S'))
+    cat('\nCurrent time:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'))
 
     cat('\nTotal time',
         printtimediff(difftime(Sys.time(), headertimestart, units = 'auto')),

@@ -16,7 +16,7 @@ learn(
   seed = NULL,
   cleanup = TRUE,
   appendinfo = TRUE,
-  valueislearnt = TRUE,
+  valueisK = TRUE,
   subsampledata = NULL,
   prior = missing(data) || is.null(data),
   startupMCiterations = 3600,
@@ -26,7 +26,7 @@ learn(
   ncheckpoints = 12,
   maxrelMCSE = +Inf,
   minESS = 450,
-  initES = 2,
+  initES = 8,
   thinning = NULL,
   verbose = TRUE,
   plottraces = !cleanup,
@@ -44,7 +44,7 @@ learn(
 
 \item{metadata}{\link{metadata} about the dataset's variates, given either as a \link[base:data.frame]{data frame} or as a file path to a CSV file.}
 
-\item{auxdata}{A larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but can still be used to help estimate some hyperparameters.}
+\item{auxdata}{An \emph{additional}, larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but is used to help estimate some hyperparameters. Note that the \code{auxdata} and \code{data} datasets should \emph{not} have datapoints in common.}
 
 \item{outputdir}{\code{NULL} (default) or \code{NA} or character: path to folder where output information and diagnostics should be saved. If \code{NULL}, a directory is created in the temporary-directory space given by \code{\link[base:tempdir]{base::tempdir()}}. If \code{NA}, a directory is created in the current working directory given by \code{\link[base:getwd]{base::getwd()}}. If character, this is taken to be the output directory; it should of course be writable by the user.}
 
@@ -54,7 +54,13 @@ learn(
 
 \item{nsamplesperchain}{Integer, default 450: number of \emph{approximately independent} Monte Carlo samples per chain. If this argument is changed, the user is also required to explicitly give either \code{nsamples} or \code{nchains}, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.}
 
-\item{parallel}{Logical or positive integer or cluster object. \code{TRUE} (default): use roughly half of available cores; \code{FALSE} (default): use serial computation; integer: use this many cores. It can also be a cluster object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}; in this case the parallel computation will use this object.}
+\item{parallel}{One of the following values:
+\itemize{
+\item A "cluster" object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}.
+\item Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+\item \code{FALSE}: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+\item \code{TRUE} (default): use the cluster that was set as default with \code{\link[parallel:setDefaultCluster]{parallel::setDefaultCluster()}}; if no such object exists, then generate a cluster with as many nodes as in the \link[base:getOption]{option} "cl.cores"; if this option is unset, then use 2 nodes.
+}}
 
 \item{seed}{Integer or \code{NULL} (default): use this seed for the random number generator. If \code{NULL}, do not set the seed.}
 
@@ -62,7 +68,7 @@ learn(
 
 \item{appendinfo}{Logical, default \code{TRUE}: append information about number of variates ('V'), number of data points ('D'), number of Monte Carlo samples ('S'), and timestamp, to the name of the output directory \code{outputdir}? The appended string has the format 'Vn_Dn_Sn_YYMMDDTHHMMSS'.}
 
-\item{valueislearnt}{Logical or \code{NULL}: should the \code{VALUE} returned be the \code{learnt} object containing the results from the Monte Carlo computation? Default \code{TRUE}. If \code{FALSE}, then \code{VALUE} is the output directory name. If \code{NULL}, then \code{VALUE} is \code{NULL}.}
+\item{valueisK}{Logical or \code{NULL}: should the \code{VALUE} returned be the \code{K}nowledge object containing the results from the Monte Carlo computation? Default \code{TRUE}. If \code{FALSE}, then \code{VALUE} is the output directory name. If \code{NULL}, then \code{VALUE} is \code{NULL}.}
 
 \item{subsampledata}{Integer or \code{NULL} (default): if integer, use only that many datapoints from the original dataset in the \code{data} argument.}
 
@@ -78,15 +84,15 @@ learn(
 
 \item{ncheckpoints}{Integer or \code{NULL}, default 12: number of datapoints (per chain) to use for checking when the Monte Carlo computation should end. If \code{NULL}, this is equal to number of variates + 2. If Inf, use all datapoints.}
 
-\item{maxrelMCSE}{Numeric positive, default \code{+Inf}: desired maximal \emph{relative Monte Carlo Standard Error} of calculated probabilities with respect to their variability with new data. The default \code{+Inf} means that \code{minESS} is used instead. \code{maxrelMCSE} is related to \code{minESS} by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.}
+\item{maxrelMCSE}{Numeric positive, default \code{+Inf}: desired maximal \emph{relative Monte Carlo Standard Error} of calculated probabilities. The default \code{+Inf} means that \code{minESS} is used instead. \code{maxrelMCSE} is related to \code{minESS} by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.}
 
 \item{minESS}{Numeric positive or \code{NULL}, default 450: desired minimal Monte Carlo \emph{Expected Sample Size}. If \code{NULL}, it is equal to the final \code{nsamplesperchain}. \code{minESS} is related to \code{maxrelMCSE} by \eqn{\mathrm{minESS} = 1/\mathrm{maxrelMCSE}^2 - \mathrm{initES}}.}
 
-\item{initES}{Numeric positive, default 2: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.}
+\item{initES}{Numeric positive, default 8: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.}
 
 \item{thinning}{Integer or \code{NULL} (default): thin out the Monte Carlo samples by this value. If \code{NULL}: let the diagnostics decide the thinning value.}
 
-\item{verbose}{Logical, default \code{TRUE}: output the progress to terminal? If \code{FALSE}, the progress is outputted to the file \code{'main.log'} in the \code{outputdir} directory.}
+\item{verbose}{Logical, default \code{TRUE}: output the progress to terminal? If \code{FALSE}, the progress is outputted to the file \code{'main.out'} in the \code{outputdir} directory.}
 
 \item{plottraces}{Logical, default \code{TRUE}: save plots of the Monte Carlo traces of diagnostic values?}
 
@@ -97,13 +103,13 @@ learn(
 \item{hyperparams}{List: hyperparameters of the hyperprior; see values in "Usage".}
 }
 \value{
-A "learnt" object, or name of directory containing such an object and other output files, or \code{NULL}, depending on argument \code{valueislearnt}.
+A "prova_K" (knowledge) object, or name of directory containing such an object and other output files, or \code{NULL}, depending on argument \code{valueisK}.
 
 \code{learn()} saves several files in a directory. By default this output directory is a temporary directory within the one used by \code{\link[base:tempdir]{base::tempdir()}}, but an alternative one can be chosen with the argument \verb{outputdir =}. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
 \itemize{
-\item \code{MCtraces.pdf}: shows several trace plots of the Monte Carlo sampling; the correspondin data are in the file \code{MCtraces.rds}.
-\item \code{plotsamples_learnt.pdf}, \code{plotquantiles_learnt.pdf}: show the marginal posterior distributions of each individual variate, together with their variability (as samples or quantiles).
-\item \verb{log-1.log}, \verb{log-2.log}, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
+\item \code{MCtraces.pdf}: shows several trace plots of the Monte Carlo sampling; the corresponding data are in the file \code{MCtraces.rds}.
+\item \code{plotsamples_learn.pdf}, \code{plotquantiles_learn.pdf}: show the marginal posterior distributions of each individual variate, together with their "revisability" (as samples or quantiles).
+\item \verb{log-1.out}, \verb{log-2.out}, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
 \item \code{rng_seed.rds}: the state of the pseudorandom seed (see \link[base:Random]{base::Random}) when \code{learn()} was called.
 \item \code{metadata.csv}: a copy of the metadata.
 }
@@ -114,15 +120,17 @@ It is recommended that you give an explicit argument \verb{outputdir =} and save
 Compute the posterior joint probability distribution of the variates conditional on the given data, by means of Markov-chain Monte Carlo, using the package \strong{Nimble}.
 }
 \details{
-This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its variability. From this full joint distribution any other distributions of interest can subsequently be computed; see \code{\link[=Pr]{Pr()}} and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the \emph{whole population}, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is \emph{principled}, made according to the rules of probability theory.
+To use this function, the package \href{https://cran.r-project.org/package=nimble}{\strong{Nimble}} needs to be installed.
 
-The output is a "learnt" object, typically saved in a \code{learnt.rds} file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
+This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its "revisability". From this full joint distribution any other distributions of interest can subsequently be computed; see \code{\link[=Pr]{Pr()}} and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the \emph{whole population}, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is \emph{principled}, made according to the rules of probability theory.
+
+The output is a "prova_K" (knowledge) object, typically saved in a \code{K.rds} file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
 
 See \code{vignette('intro')} for introductory examples.
 
 The computation is "non-parametric": probability or frequency distributions are not assumed to be Gaussian or of any other specific shape; no "model" is assumed. The mathematical representation of the space of joint frequency distributions follows ideas of Dunson & Bhattacharya (2011); see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details.
 
-The computation is done via Markov-chain Monte Carlo, using the package \href{https://cran.r-project.org/package=nimble}{\strong{Nimble}}. "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details. The default values for convergence require that all of the following three conditions be fulilled:
+The computation is done via Markov-chain Monte Carlo, using the package \strong{Nimble}. "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details. The default values for convergence require that all of the following three conditions be fulilled:
 \itemize{
 \item The computation's numerical error (Monte-Carlo Standard Error) for the posterior probability must be smaller than 4.7\% of the standard deviation of the posterior's variability.
 \item The computation's numerical error for the 0.055- and 0.945-percentiles of the posterior's variability should be smaller than 4.7\% of the distance between them.
@@ -138,17 +146,17 @@ learn(
   data = 'filename_with_data.csv', # CSV file containing the dataset
   metadata = 'filename_with_metadata.csv', # CSV file containing the metadata
   outputdir = 'some_directory', # path to output directory
-  parallel = 8 # machine has more than 8 cores, so we use 8
+  parallel = 8 # let's say machine has more than 8 cores, so we use 8
   ## possibly other arguments to learn()
 )
 }\if{html}{\out{</div>}}
 
 and then be called on a bash terminal with
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{$ Rscript myscript.R > learnoutput.log 2>&1 &
+\if{html}{\out{<div class="sourceCode">}}\preformatted{$ Rscript myscript.R > learnoutput.out 2>&1 &
 }\if{html}{\out{</div>}}
 
-with such a call, the file 'learnoutput.log' will contain information about how the computation is proceeding and the estimated end time.
+with such a call, the file 'learnoutput.out' will contain information about how the computation is proceeding and the estimated end time.
 }
 \examples{
 \donttest{
@@ -161,7 +169,7 @@ dataset <- data.frame(V = rnorm(n = 3))
 metadata <- data.frame(name = 'V', type = 'continuous')
 
 ## Learn from the data:
-learnt <- learn(
+K <- learn(
   data = dataset, metadata = metadata,
       ## the following parameters are unrealistic
       ## only used to reduce computation time for this example
@@ -170,8 +178,8 @@ learnt <- learn(
   minESS = 0, initES = 0
 )
 
-## Check structure of `learnt` object:
-str(learnt)
+## Check structure of `K` object:
+str(K)
 }
 
 }
@@ -186,24 +194,25 @@ For the mathematical representation of the frequency space:
 About Bayesian inference under exchangeability ("population inference"):
 \itemize{
 \item Lindley, Novick (1981): \emph{The role of exchangeability in inference}, \url{doi:10.1214/aos/1176345331}.
-\item Bernardo, Smith (2000): \emph{Bayesian Theory}. Wiley \url{doi:10.1002/9780470316870}.
+\item Bernardo, Smith (2000): \emph{Bayesian Theory}, Wiley \url{doi:10.1002/9780470316870}.
+\item Fortini, Petrone (2024): \emph{Prediction-based uncertainty quantification for exchangeable sequences}, \url{doi:10.1098/rsta.2022.0142}.
 \item Porta Mana \url{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}.
 }
 
 About nonparametrics:
 \itemize{
-\item Müller et al. (2015): \emph{Nonparametric Bayesian inference}. IMS \url{doi:10.1007/978-3-319-18968-0}.
-\item Hjort et al. (2010): \emph{Bayesian Nonparametrics}. Cambridge University Press \url{doi:10.1017/CBO9780511802478}.
+\item Müller et al. (2015): \emph{Nonparametric Bayesian inference}, IMS \url{doi:10.1007/978-3-319-18968-0}.
+\item Hjort et al. (2010): \emph{Bayesian Nonparametrics}, Cambridge University Press \url{doi:10.1017/CBO9780511802478}.
 }
 
 About Markov-chain Monte Carlo and "convergence":
 \itemize{
-\item de Valpine, Paciorek, Turek, & al. (2026): \emph{NIMBLE: MCMC, Particle Filtering, and Programmable Hierarchical Modeling} \url{doi:10.5281/zenodo.1211190}, \url{https://cran.r-project.org/package=nimble}.
-\item Kwon & al. (2025): \emph{MCMC stopping rules in latent variable modelling} \url{doi:10.1111/bmsp.12357}.
-\item Vehtari & al. (2021): \emph{Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC} \url{doi:10.1214/20-BA1221}.
-\item Roy (2020): \emph{Convergence diagnostics for Markov chain Monte Carlo} \url{doi:10.1146/annurev-statistics-031219-041300}.
-\item Gilks & al. (1998): \emph{Markov Chain Monte Carlo in Practice}. Chapman & Hall/CRC \url{doi:10.1201/b14835}.
-\item D. J. C. MacKay (2005): \emph{Information Theory, Inference, and Learning Algorithms}. Cambridge University Press \url{https://www.inference.org.uk/itila/book.html}.
+\item de Valpine, Paciorek, Turek, & al. (2026): \emph{NIMBLE: MCMC, Particle Filtering, and Programmable Hierarchical Modeling}, \url{doi:10.5281/zenodo.1211190}, \url{https://cran.r-project.org/package=nimble}.
+\item Kwon & al. (2025): \emph{MCMC stopping rules in latent variable modelling}, \url{doi:10.1111/bmsp.12357}.
+\item Vehtari & al. (2021): \emph{Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC}, \url{doi:10.1214/20-BA1221}.
+\item Roy (2020): \emph{Convergence diagnostics for Markov chain Monte Carlo}, \url{doi:10.1146/annurev-statistics-031219-041300}.
+\item Gilks & al. (1998): \emph{Markov Chain Monte Carlo in Practice}, Chapman & Hall/CRC \url{doi:10.1201/b14835}.
+\item D. J. C. MacKay (2005): \emph{Information Theory, Inference, and Learning Algorithms}, Cambridge University Press \url{https://www.inference.org.uk/itila/book.html}.
 \item Porta Mana \url{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}.
 }
 }
@@ -218,3 +227,4 @@ About Markov-chain Monte Carlo and "convergence":
 
 \code{\link[=pread.csv]{pread.csv()}} and \code{\link[=pwrite.csv]{pwrite.csv()}} to read and write CSV files in the format used by \code{learn()}.
 }
+\concept{learn}

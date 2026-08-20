@@ -7,7 +7,7 @@
 Pr(
   Y,
   X = NULL,
-  learnt,
+  K = NULL,
   tails = NULL,
   priorY = NULL,
   nsamples = "all",
@@ -20,86 +20,105 @@ Pr(
 )
 }
 \arguments{
-\item{Y}{Matrix or data.table: set of values of variates of which we want
-the joint probability of. One variate per column, one set of values per row.}
+\item{Y}{Matrix or data.table: set of values of variates whose probabilities are sought. One variate per column, one set of values per row.}
 
-\item{X}{Matrix or data.table or \code{NULL} (default): set of values of variates on which we want to condition the joint probability of \code{Y}. If \code{NULL}, no conditioning is made (except for conditioning on the learning dataset and prior assumptions). One variate per column, one set of values per row.}
+\item{X}{Matrix or data.table or \code{NULL} (default): set of values of variates in the conditional of the probability of \code{Y}. If \code{NULL}, no conditioning is made (besides the conditioning on knowledge \code{K}). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.}
 
-\item{learnt}{Either a character with the name of a directory or full path for a 'learnt.rds' object, produced by the \code{\link[=learn]{learn()}} function, or such an object itself.}
+\item{K}{A "prova_K" (knowledge) object produced by \code{\link[=learn]{learn()}}. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one. See "Details" for the interpretation of unnamed arguments.}
 
-\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{Y} and \code{X}. For variates in this list, the probability arguments are understood in an semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for \code{Y} and \code{X} variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by \code{'<='} or \code{'left'} or \code{-1}; a right-open interval \eqn{Y \ge y} is indicated by \code{'>='} or \code{'right'} or \code{+1}. Values \code{NULL}, \code{'=='}, \code{0} indicate that a point value \code{Y = y} (not an interval) should be calculated. \strong{NB}: the semi-open intervals \emph{always} include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} you should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to \emph{more} than 1.}
+\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{Y} and \code{X}. For variates in this list, the probability arguments are understood in a semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for \code{Y} and \code{X} variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by \code{'<='} or \code{'lower'} or\code{'left'} or \code{-1}; a right-open interval \eqn{Y \ge y} is indicated by \code{'>='} or \code{'upper'} or \code{'right'} or \code{+1}. Values \code{NULL}, \code{'=='}, \code{0} indicate that a point value \code{Y = y} (not an interval) should be calculated. \strong{NB}: the semi-open intervals \emph{always} include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} you should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to \emph{more} than 1.}
 
 \item{priorY}{Numeric vector with the same length as the rows of \code{Y}, or \code{TRUE}, or \code{NULL} (default): prior probabilities or base rates for the \code{Y} values. If \code{TRUE}, the prior probabilities are assumed to be all equal.}
 
-\item{nsamples}{Integer or \code{NULL} or \code{'all'} (default): desired number of samples of the variability of the probability for \code{Y}. If \code{NULL}, no samples are reported. If \code{'all'} (or \code{Inf}), all samples obtained by the \code{\link[=learn]{learn()}} function are used.}
+\item{nsamples}{Integer or \code{NULL} or \code{'all'} (default): desired number of samples of the revisability of the probability for \code{Y}. If \code{NULL} or 0, no samples are reported. If \code{'all'} or \code{Inf}, all samples obtained by the \code{\link[=learn]{learn()}} function are used.}
 
-\item{quantiles}{Numeric vector, between 0 and 1, or \code{NULL}: desired quantiles of the variability of the probability for \code{Y}. Default \code{c(0.055, 0.25, 0.75, 0.945)}, that is, the 5.5\%, 25\%, 75\%, 94.5\% quantiles. These are typical quantile values in the Bayesian literature: they give 50\% and 89\% credibility intervals, which correspond to 1 shannons and 0.5 shannons of uncertainty (see \url{doi:10.5281/zenodo.17072199}). If \code{NULL}, no quantiles are calculated.}
+\item{quantiles}{Numeric vector, between 0 and 1, or \code{NULL}: desired quantiles of the revisability of the probability for \code{Y}. Default \code{c(0.055, 0.25, 0.75, 0.945)}, that is, the 5.5\%, 25\%, 75\%, 94.5\% quantiles. These are typical quantile values in the Bayesian literature: they give 50\% and 89\% credibility intervals, which correspond to 1 shannons and 0.5 shannons of uncertainty (see \url{doi:10.5281/zenodo.17072199}). If \code{NULL}, no quantiles are calculated.}
 
-\item{parallel}{Logical or positive integer or cluster object. \code{TRUE} (default): use roughly half of available cores; \code{FALSE}: use serial computation; integer: use this many cores. It can also be a cluster object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}; in this case the parallel computation will use this object.}
+\item{parallel}{One of the following values:
+\itemize{
+\item A "cluster" object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}.
+\item Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+\item \code{FALSE}: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+\item \code{TRUE} (default): use the cluster that was set as default with \code{\link[parallel:setDefaultCluster]{parallel::setDefaultCluster()}}; if no such object exists, then generate a cluster with as many nodes as in the \link[base:getOption]{option} "cl.cores"; if this option is unset, then use 2 nodes.
+}}
 
-\item{sep}{character, default \code{','}: character to separate variate names and values}
+\item{sep}{character, default \code{','}: character to separate the output's variate names and values.}
 
-\item{solidus}{character, default \code{'|'}: character prepended to names of the variates in the conditional (typically the \code{X} variates).}
+\item{solidus}{character, default \code{'|'}: character prepended to the output's names of the variates in the conditional (typically the \code{X} variates).}
 
 \item{verbose}{Logical, default \code{FALSE}: give messages about parallel processing?}
 
-\item{keepYX}{Logical, default \code{TRUE}: keep a copy of the \code{Y} and \code{X} arguments in the output? This is used for the plot method.}
+\item{keepYX}{Logical, default \code{TRUE}: keep a copy of the \code{Y} and \code{X} arguments in the output? This is used for \code{\link[=plot.prova_pr]{plot.prova_pr()}}.}
 }
 \value{
-An object of class "probability", effectively a list consisting of the following elements:
+An object of class "prova_pr" (probability), which is a list consisting of the following elements:
 \itemize{
-\item \code{values}: a matrix with the probabilities \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data})}, for all joint values \eqn{y} of the \eqn{Y}-variates (rows) and  all joint values \eqn{x} of the \eqn{X}-variates (columns).
-\item \code{quantiles} (possibly \code{NULL}): an array with the variability quantiles (3rd dimension of the array) for such probabilities.
-\item \code{samples} (possibly \code{NULL}): an array with the variability samples (3rd dimension of the array) for such probabilities.
-\item \code{values.MCaccuracy}, \code{quantiles.MCaccuracy}: arrays with the numerical accuracies (roughly speaking a standard deviation) of the Monte Carlo calculations for the \code{values} and \code{quantiles} elements.
-\item \code{Y}, \code{X}: copies of the \code{Y} and \code{X} arguments.
+\item \code{'value'}: a matrix with the probabilities \eqn{\mathrm{Pr}(Y = y \vert X = x, K)}, for all joint values \eqn{y} of the \eqn{Y}-variates (rows) and  all joint values \eqn{x} of the \eqn{X}-variates (columns).
+\item \code{'quantiles'} (possibly \code{NULL}): an array with the revisability quantiles (3rd dimension of the array) for such probabilities.
+\item \code{'samples'} (possibly \code{NULL}): an array with the revisability samples (3rd dimension of the array) for such probabilities.
+\item \code{'value.acc'}, \code{quantiles.acc}: arrays with the numerical accuracies (roughly speaking a standard deviation) of the Monte Carlo calculations for the \code{'values'} and \code{'quantiles'} elements.
+\item \code{'density'}: numerical vector as long as number of rows in \code{Y}, used mainly for \code{\link[=plot.prova_pr]{plot.prova_pr()}}. It is the order of the probability density the \code{Y}-values: values with \code{0} are actual probabilities; values with \code{1} are one-dimensional probability densities \eqn{\mathrm{p}(\dotso)\,\mathrm{d}y}; values with \code{2} are two-dimensional probability densities \eqn{\mathrm{p}(\dotso)\,\mathrm{d}y_1\,\mathrm{d}y_2}; and so on.
+\item \code{'Y'}, \code{'X'}, \code{'tails'}: copies of the \code{Y}, \code{X}, \code{tails} arguments.
+\item \code{'K'}: name of the "prova_K" (knowledge) object used in the calculation.
 }
 }
 \description{
-This function calculates posterior probability densities, cumulative posterior probabilities, and mixtures thereof. It also outputs the variability of such probabilities if more training data were available, and the Monte Carlo Standard Error for the calculated posterior probabilities.
+Calculate posterior probabilities and probability densities, cumulative posterior probabilities, and mixtures thereof. Output the "revisability" of such probabilities if more training data were available, and the Monte Carlo Standard Error for the calculated posterior probabilities.
 }
 \details{
-This function calculates the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data})}, where \eqn{Y = y} and \eqn{X = x} are two (non overlapping) sets of joint variate values, inputted as \link[base:data.frame]{data frame} arguments \code{Y} and \code{X}. It is somewhat analogous to the \code{d}-variants and \code{p}-variantes of R distribution functions, such as \code{\link[stats:dnorm]{stats::dnorm()}} and \code{\link[stats:pnorm]{stats::pnorm()}}. If \code{X} is omitted or \code{NULL}, then the posterior probability \eqn{\mathrm{Pr}(Y = y \vert \text{data})} is calculated.
+This function calculates the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K)}, where \eqn{Y = y} and \eqn{X = x} are two (non overlapping) sets of joint variate values, inputted as \link[base:data.frame]{data frame} arguments \code{Y} and \code{X}, and \eqn{K} is the information in the data and metadata. It is somewhat analogous to the \code{dxxx}-variants and \code{pxxx}-variants of \link[stats:Distributions]{R distribution functions}. If \code{X} is omitted or \code{NULL}, then the posterior probability \eqn{\mathrm{Pr}(Y = y \vert K)} is calculated.
 
-For some variates in \code{Y} or \code{X}, tail values can also be prescribed, so that this function calculates mixed probabilities such as \deqn{\mathrm{Pr}(Y_1 = y_1, Y_2 \le y_2, \dotsc \vert X_1 = x_1, X_2 \ge x_2, \dotsc, \text{data})\ .} Tail values are inputted via the \code{'tails'} argument; see "Usage".
+For some variates in \code{Y} or \code{X}, tail values can also be prescribed, so that this function calculates mixed probabilities such as \deqn{\mathrm{Pr}(Y_1 = y_1, Y_2 \le y_2, \dotsc \vert X_1 = x_1, X_2 \ge x_2, \dotsc, K)\ .} Tail values are inputted via the \code{'tails'} argument; see "Usage".
 
-This function also outputs the variability of the posterior probabilities above, that is, probabilities such as \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{new\,data}, \text{data})} that we could have if more learning data were provided, as well as a number of samples of the possible values of such probability. This variability can be outputted in two ways; the user can choose either, or both, or none:
+If \code{Pr()} is called with two unnamed arguments, \code{Pr(..., ...)}, then it is interpreted as \code{Pr(Y = ..., K = ...)}. If it is called with three unnamed arguments, then it is interpreted as either \code{Pr(Y = ..., X = ..., K = ...)} or \code{Pr(Y = ..., K = ..., tails = ...)}, depending on whether the second argument appears to be a "prova_K" (knowledge) object or not.
+
+This function also outputs the "revisability" of the posterior probabilities above, that is, probabilities such as \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{new data}, K)} that we could have if more learning data were provided, as well as a number of samples of the possible values of such probability. This revisability can be outputted in two ways; the user can choose either, or both, or none:
 \itemize{
 \item As samples (default 3600 samples, depending on the 'nsamples' argument given to the \code{\link[=learn]{learn()}} function) of the alternative values that the posterior probability could have.
-\item As quantiles (default 5.5\%, 25\%, 75\%, 94.5\%) of the possible variability.
+\item As quantiles (default 5.5\%, 25\%, 75\%, 94.5\%) of the possible revisability.
 }
 
 If several joint values are given for \code{Y} or \code{X}, the function will create a 2D grid of results for all possible combinations of the given \code{Y} and \code{X} values.
 
-This function also allows for base-rate or other prior-probability corrections: If a prior (for instance, a base rate) for \code{Y} is given, the function will calculate the probability \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data}, \text{prior})} from \eqn{\mathrm{Pr}(X = x \vert Y = y, \text{data})} and the prior, by means of Bayes's theorem.
+This function also allows for base-rate or other prior-probability corrections: If a prior (for instance, a base rate) for the data corresponding to rows \code{Y} is given, the function will calculate the probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})} from \eqn{\mathrm{Pr}(X = x \vert Y = y, K)} and the prior, by means of Bayes's theorem
+\deqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})
+=
+\frac{
+\mathrm{Pr}(X = x \vert Y = y, K) \cdot
+\mathrm{Pr}(Y = y \vert \text{prior})
+}{
+\sum_{y'} \mathrm{Pr}(X = x \vert Y = y', K) \cdot
+\mathrm{Pr}(Y = y' \vert \text{prior})
+}
+\ .}
+\emph{Important}: any values \emph{not} present in the \code{Y} data frame are given \emph{zero} prior probability; in other words, the normalization \eqn{\sum_{y'}} only counts the $y$ values appearing in the data frame \code{Y}.
 
 Each variate in each argument \code{Y}, \code{X} can be specified either as a point-value \eqn{Y = y} or as a left-open interval \eqn{Y \le y} or as a right-open interval \eqn{Y \ge y}, through the argument \code{tails}.
 
 See \code{vignette('intro')} for example uses.
 }
 \examples{
-## Load the example `learnt` object calculated from the "penguins" dataset;
+## Use the "prova_K" (knowledge) object 'Kexample',
+## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
-learnt <- learntExample
 
 ## ## Example 1:
 ## Calculate the probability that an unknown penguin from this population
 ## is of species 'Adelie'
 
-probs <- Pr(
-  Y = data.frame(species = 'Adelie'),
-  learnt = learnt, parallel = 1
-)
+## more explicitly: Pr(Y = data.frame(species = 'Adelie'), K = Kexample)
+probs <- Pr(data.frame(species = 'Adelie'), Kexample)
 
 ## display the probability value
-probs$values
+probs$value
 
 ## the full-population frequency of 'Adelie' penguins is unknown;
 ## display the 5.5\%- and 94.5\%-probability values
 ## for such frequency
 probs$quantiles[, , c('5.5\%', '94.5\%')]
 
-## we can also plot the probability distribution for this full-population frequency
+## we can also plot the probability distribution
+## for this full-population frequency
 hist(probs, legend = 'topright')
 
 
@@ -107,13 +126,11 @@ hist(probs, legend = 'topright')
 ## Calculate the 3 probabilities that an unknown penguin from this population
 ## is of species 'Adelie', 'Chinstrap', 'Gentoo'
 
-probs <- Pr(
-  Y = data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
-  learnt = learnt, parallel = 1
-)
+probs <- Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+  Kexample)
 
 ## display the 3 probability values
-probs$values
+probs$value
 
 ## the full-population frequencies of the three species are unknown;
 ## display the 5.5\%- and 94.5\%-probability values
@@ -131,14 +148,12 @@ hist(probs)
 ## Calculate the probability that an unknown penguin is of species 'Adelie'
 ## GIVEN that its bill length is 43 mm
 
-probs <- Pr(
-  Y = data.frame(species = 'Adelie'),
-  X = data.frame(bill_len = 43),
-  learnt = learnt, parallel = 1
-)
+## more explicitly: Pr(Y = ..., X = ..., K = Kexample)
+probs <- Pr(data.frame(species = 'Adelie'), data.frame(bill_len = 43),
+  Kexample)
 
 ## display the probability value
-probs$values
+probs$value
 
 ## the full-subpopulation frequency of 'Adelie' penguins,
 ## among penguins having bill length of 43 mm, is unknown;
@@ -151,13 +166,10 @@ probs$quantiles[, , c('5.5\%', '94.5\%')]
 ## Calculate the probability that
 ## an unknown penguin is of species 'Adelie' AND its bill length is 43 mm
 
-probs <- Pr(
-  Y = data.frame(species = 'Adelie', bill_len = 43),
-  learnt = learnt, parallel = 1
-)
+probs <- Pr(data.frame(species = 'Adelie', bill_len = 43), Kexample)
 
 ## display the probability value
-probs$values
+probs$value
 
 ## display the 5.5\%- and 94.5\%-probability values
 ## for the full-population frequency of 'Adelie' penguins with 43 mm bills
@@ -172,10 +184,10 @@ Y <- data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo'))
 
 X <- data.frame(bill_len = c(43, 44))
 
-probs <- Pr(Y = Y, X = X, learnt = learnt, parallel = 1)
+probs <- Pr(Y, X, Kexample)
 
 ## display the 3 x 2 probability values
-probs$values
+probs$value
 
 ## display the 5.5\%- and 94.5\%-probability values
 ## for the full-population joint frequencies
@@ -194,10 +206,10 @@ Y <- expand.grid(
   bill_len = c(43, 44)
 )
 
-probs <- Pr(Y = Y, learnt = learnt, parallel = 1)
+probs <- Pr(Y, Kexample)
 
 ## display the 6 joint-probability values
-probs$values
+probs$value
 
 ## display the 5.5\%- and 94.5\%-probability values
 ## for the full-population joint frequencies
@@ -208,22 +220,24 @@ probs$quantiles[, , c('5.5\%', '94.5\%')]
 \references{
 \itemize{
 \item Lindley, Novick (1981): \emph{The role of exchangeability in inference}, \url{doi:10.1214/aos/1176345331}.
-\item Bernardo, Smith (2000): \emph{Bayesian Theory}. Wiley \url{doi:10.1002/9780470316870}.
-\item Jaynes (2003): \emph{Probability Theory: The Logic of Science}. Cambridge University Press \url{doi:10.1017/CBO9780511790423}.
-\item MacKay (2005): \emph{Information Theory, Inference, and Learning Algorithms}. Cambridge University Press \url{https://www.inference.org.uk/itila/book.html}.
-\item Porta Mana (2025): \emph{What's special about 89\% credibility intervals?} \url{doi:10.5281/zenodo.17072199}.
+\item Bernardo, Smith (2000): \emph{Bayesian Theory}, Wiley \url{doi:10.1002/9780470316870}.
+\item Fortini, Petrone (2024): \emph{Prediction-based uncertainty quantification for exchangeable sequences}, \url{doi:10.1098/rsta.2022.0142}.
+\item Jaynes (2003): \emph{Probability Theory: The Logic of Science}, Cambridge University Press \url{doi:10.1017/CBO9780511790423}.
+\item MacKay (2005): \emph{Information Theory, Inference, and Learning Algorithms}, Cambridge University Press \url{https://www.inference.org.uk/itila/book.html}.
+\item Porta Mana (2025): \emph{What's special about 89\% credibility intervals?}, \url{doi:10.5281/zenodo.17072199}.
 }
 }
 \seealso{
-\code{\link[=learn]{learn()}}, which generates the \code{learnt} objects required by \code{Pr()}.
+\code{\link[=learn]{learn()}}, which generates the \code{K}nowledge objects required by \code{Pr()}.
 
-\code{\link[=plot.probability]{plot.probability()}} to plot probabilities and quantiles calculated by \code{Pr()}.
+\code{\link[=plot.prova_pr]{plot.prova_pr()}} to plot probabilities and quantiles calculated by \code{Pr()}.
 
-\code{\link[=hist.probability]{hist.probability()}} to plot histograms of the probability distributions calculated by \code{Pr()}.
+\code{\link[=hist.prova_pr]{hist.prova_pr()}} to plot histograms of the probability distributions calculated by \code{Pr()}.
 
-\code{\link[=print.probability]{print.probability()}} to print the main elements of the probabilities calculated by \code{Pr()}.
+\code{\link[=print.prova_pr]{print.prova_pr()}} to print the main elements of the probabilities calculated by \code{Pr()}.
 
 \code{\link[=qPr]{qPr()}} to calculate quantiles for a specific variate, that is, the variate values having given probabilities.
 
 \code{\link[=rPr]{rPr()}} to generate datapoints.
 }
+\concept{probability}

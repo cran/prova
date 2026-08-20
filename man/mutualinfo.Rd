@@ -2,18 +2,39 @@
 % Please edit documentation in R/mutualinfo.R
 \name{mutualinfo}
 \alias{mutualinfo}
+\alias{mutualinfoF}
 \title{Calculate mutual information between groups of joint variates}
 \usage{
 mutualinfo(
   Y1names,
-  Y2names = NULL,
+  Y2names,
   X = NULL,
-  learnt,
+  K = NULL,
   tails = NULL,
-  n = NULL,
+  quantiles = c(0.055, 0.25, 0.75, 0.945),
+  ns = NULL,
+  nv = 12,
   unit = "Sh",
   parallel = TRUE,
-  verbose = FALSE
+  sep = ",",
+  solidus = "|",
+  verbose = FALSE,
+  keepX = TRUE
+)
+
+mutualinfoF(
+  Y1names,
+  Y2names,
+  X = NULL,
+  K = NULL,
+  tails = NULL,
+  quantiles = c(0.055, 0.25, 0.75, 0.945),
+  unit = "Sh",
+  parallel = TRUE,
+  sep = ",",
+  solidus = "|",
+  verbose = FALSE,
+  keepX = TRUE
 )
 }
 \arguments{
@@ -23,113 +44,92 @@ mutualinfo(
 
 \item{X}{Matrix or data.frame or \code{NULL}: values of some variates conditional on which we want the probabilities.}
 
-\item{learnt}{Either a character with the name of a directory or full path
-for an 'learnt.rds' object, or such an object itself.}
+\item{K}{A "prova_K" (knowledge) object produced by \code{\link[=learn]{learn()}}. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one.}
 
-\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in an semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
+\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
 
-\item{n}{Integer or \code{NULL} (default): number of samples from which to approximately calculate the mutual information. Default as many as Monte Carlo samples in \code{learnt}.}
+\item{quantiles}{Numeric vector, between 0 and 1: desired quantiles of the revisability of the mutual information. Default \code{c(0.055, 0.25, 0.75, 0.945)}, that is, the 5.5\%, 25\%, 75\%, 94.5\% quantiles. See similar argument in \code{\link[=Pr]{Pr()}}.}
+
+\item{ns}{Integer or \code{Inf} or \code{NULL} (default): number of Monte Carlo samples in the "prova_K" (knowledge) object to use for calculating the mutual information. If \code{Inf} or \code{NULL}, use all Monte Carlo samples available in the "prova_K" (knowledge) object.}
+
+\item{nv}{Integer, default 12: number of \emph{duplicates} of Monte Carlo samples in the "prova_K" (knowledge) object to use for calculating the revisability of the mutual information.}
 
 \item{unit}{Either one of 'Sh' for \emph{shannon} (default), 'Hart' for \emph{hartley}, 'nat' for \emph{natural unit}, or a positive real indicating the base of the logarithms to be used.}
 
-\item{parallel}{Logical or positive integer or cluster object. \code{TRUE} (default): use roughly half of available cores; \code{FALSE}: use serial computation; integer: use this many cores. It can also be a cluster object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}; in this case the parallel computation will use this object.}
+\item{parallel}{One of the following values:
+\itemize{
+\item A "cluster" object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}.
+\item Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+\item \code{FALSE}: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+\item \code{TRUE} (default): use the cluster that was set as default with \code{\link[parallel:setDefaultCluster]{parallel::setDefaultCluster()}}; if no such object exists, then generate a cluster with as many nodes as in the \link[base:getOption]{option} "cl.cores"; if this option is unset, then use 2 nodes.
+}}
+
+\item{sep}{character, default \code{','}: character to separate the output's variate names and values.}
+
+\item{solidus}{character, default \code{'|'}: character prepended to the output's names of the variates in the conditional (typically the \code{X} variates).}
 
 \item{verbose}{Logical, default \code{FALSE}: give messages about parallel processing?}
+
+\item{keepX}{Logical, default \code{TRUE}: keep a copy of the \code{X} argument in the output? This is used for \code{\link[=hist.prova_mi]{hist.prova_mi()}}.}
 }
 \value{
-A list consisting of the following elements:
+An object of class "prova_mi" (mutual information), which is a list consisting of the following elements:
 \itemize{
-\item \code{MI}, a vector of \code{value} and \code{accuracy}: the mutual information between (joint) variates \code{Y1names} and (joint) variates \code{Y2names}.
-\item \code{CondEn12}, \code{CondEn21}, vectors of \code{value} and \code{accuracy}: the conditional entropy of the first variate given the second, and vice versa.
-\item \code{En1}, \code{En2}, vectors of \code{value} and \code{accuracy}: the (differential) entropies of the first and second variates.
-\item \code{MI.rGauss}, a vector of \code{value} and \code{accuracy}: the absolute value of the Pearson correlation coefficient \eqn{r} of a \emph{multivariate Gaussian distribution} having mutual information \code{MI}; the two are related by \eqn{\mathrm{MI} = -\ln(1 - r^2)/2}. It may provide a vague intuition for the \code{MI} value for people more familiar with Pearson's correlation, but should be taken with a grain of salt.
-\item \code{unit}, \code{Y1names}, \code{Y1names}: same as the input arguments, included for the user's convenience.
+\item \code{'value'}, the mutual information between (joint) variates \code{Y1names} and (joint) variates \code{Y2names}.
+\item \code{'quantiles'}, a vector with the revisability quantiles for the mutual information.
+\item \code{'value.acc'}, \code{quantiles.acc} number and vector with the numerical accuracies (roughly speaking a standard deviation) of the Monte Carlo calculation for the \code{'value'} and the \code{'quantiles'} elements.
+\item \code{'samples'}, a vector with the revisability samples for the mutual information.
+\item \code{'rGauss'}, a vector of \code{value} and \code{accuracy}: the absolute value of the Pearson correlation coefficient \eqn{r} of a \emph{multivariate Gaussian distribution} having mutual information \code{MI}; the two are related by \eqn{\mathrm{MI} = -\ln(1 - r^2)/2}. It may provide a vague intuition for the \code{MI} value for people more familiar with Pearson's correlation, but should be taken with a grain of salt.
+\item \code{'unit'}, \code{'Y1names'}, \code{'Y1names'} \code{'X'}, \code{'tails'}: copies of the homonymous input arguments.
+\item \code{'K'}: name of the "prova_K" (knowledge) object used in the calculation.
 }
 }
 \description{
-This function calculates various entropic information measures between two grops of joint variates: the mutual information, the conditional entropies, and the entropies.
+Functions for calculating the mutual information between two grops of joint variates, as well as its revisability. Function \code{\link[=mutualinfo]{mutualinfo()}} can be used for any variates, but is slower and potentially less accurate. Function \code{\link[=mutualinfoF]{mutualinfoF()}} is meant to be used with variates having a finite domain, but is extremely faster and more accurate. See "Details"
 }
 \details{
-If \eqn{Y_1} and \eqn{Y_2} are two variates, each of which can be a joint variate such as \eqn{Y_1 = (Y_{1,1}, Y_{1,2}, \dotsc)}, and \eqn{X} a third, also possibly join, variate, then the mutual information \eqn{\mathit{MI}} between \eqn{Y_1} and \eqn{Y_2}, conditional on \eqn{X = x}, is given by
+If \eqn{Y_1} and \eqn{Y_2} are two variates, each of which can be a joint variate such as \eqn{Y_1 = (Y_{1,1}, Y_{1,2}, \dotsc)}, and \eqn{X} a third, also possibly join, variate, then the mutual information \eqn{\mathit{MI}} between \eqn{Y_1} and \eqn{Y_2}, conditional on \eqn{X = x} and the knowledge \eqn{K} about data and metadata, is given by
 \deqn{\mathit{MI}(Y_1, Y_2 \vert X = x) \mathrel{:=}
 \sum_{y_1, y_2}
-\mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, \text{data})
+\mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, K)
 \log_2\frac{
-\mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, \text{data})
+\mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, K)
 }{
-\mathrm{Pr}(Y_1 = y_1 \vert X = x, \text{data})
+\mathrm{Pr}(Y_1 = y_1 \vert X = x, K)
 \cdot
-\mathrm{Pr}(Y_2 = y_2 \vert X = x, \text{data})
+\mathrm{Pr}(Y_2 = y_2 \vert X = x, K)
 } \, \mathrm{Sh}
 }
-an expression which can also be written in several other equivalent ways. It is an information-theoretic measure of association that is model-free, that is, does not depend on assumptions such as linearity, gaussianity, and similar. See \code{vignette('mutualinfo')} for discussion and example uses, and also the "References" section.  If \eqn{Y_1, Y_2} are \emph{jointly gaussian variates}, then there is a mathematical correspondence between their mutual information and their Pearson correlation coefficient; see output \code{MI.rGauss} in the "Value" section.
+an expression which can also be written in several other equivalent ways. If the variates involved are continuous, the sums are replaced by integrals. Mutual information is a model-free information-theoretic measure of association, that is, it does not depend on assumptions such as linearity, gaussianity, and similar. See \code{vignette('mutualinfo')} for discussion and example uses, and also the "References" section.  If \eqn{Y_1, Y_2} are \emph{jointly gaussian variates}, then there is a mathematical correspondence between their mutual information and their Pearson correlation coefficient; see output \code{rGauss} in the "Value" section.
 
-The conditional entropy of \eqn{Y_1} with respect to \eqn{Y_2}, conditional on \eqn{X = x}, is given by
-\deqn{\mathit{CondEn12}(Y_1, Y_2 \vert X = x) \mathrel{:=}
--\sum_{y_1, y_2}
-\mathrm{Pr}(Y_1 = y_1 \vert Y_2 = y_2, X = x, \text{data})
-\log_2
-\mathrm{Pr}(Y_1 = y_1 \vert Y_2 = y_2, X = x, \text{data})
-\cdot
-\mathrm{Pr}(Y_2 = y_2 \vert X = x, \text{data})
-\, \mathrm{Sh}
-}
+The functions \code{mutualinfo()} and \code{mutualinfoF()} calculate the mutual information above for the joint variates specified in the arguments \code{Y1names} and \code{Y2names}, conditional on the values of the variates specified in the \link[base:data.frame]{data frame} \code{X}. If \code{X} is omitted or \code{NULL}, then the posterior probabilities \eqn{\mathrm{Pr}(Y_1 | K)} etc. are used. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
 
-The (differential) entropy of \eqn{Y_1}, conditional on \eqn{X = x}, is given by
-\deqn{\mathit{En1}(Y_1 \vert X = x) \mathrel{:=}
--\sum_{y_1}
-\mathrm{Pr}(Y_1 = y_1 \vert X = x, \text{data})
-\log_2
-\mathrm{Pr}(Y_1 = y_1 \vert  X = x, \text{data})
-\, \mathrm{Sh}
-}
+Function \code{\link[=mutualinfo]{mutualinfo()}} computes the quantities above via Monte Carlo integration; that is, the sums or integrals are approximated by averages over samples drawn with appropriate probabilities. The computation can take tens of minutes if not hours; it can be sped up by using more nodes (if available) in parallel, through the argument \verb{parallel =}. This function should be used if \eqn{Y_1} or \eqn{Y_2} (arguments \code{Y1names} and \code{Y2names}) include \emph{continous} variates (see \link{metadata}).
 
-see "References" section for discussions about entropy and conditional entropy.
-
-The function \code{mutualinfo()} calculates the quantities above for the joint variates specified in the arguments \code{Y1names} and \code{Y2names}, conditional on the values of the variates specified in the data frame \code{X}. If \code{X} is omitted or \code{NULL}, then the posterior probabilities \eqn{\mathrm{Pr}(Y_1 | \text{data})} etc. are used. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
-
-The computation of these quantities is done via Monte Carlo integration, using the samples produced by the \code{\link[=learn]{learn()}} function. The present function also output the numerical error associated with this computation.
+Function \code{\link[=mutualinfoF]{mutualinfoF()}} computes the quantities above by calculating all required probabilities (a finite number) and performing the exact sums. This can only be done for variates with finite domains. If continuous variates are involved, a set of probabilities is calculated on a finite grid of their domain; for this reason the results may be grossly in error. This function should be used if \eqn{Y_1} or \eqn{Y_2} (arguments \code{Y1names} and \code{Y2names}) include \emph{only} variates with finite domains, typically nominal or ordinal variates (see \link{metadata}).
 }
 \examples{
-## Load the example `learnt` object calculated from the "penguins" dataset;
-## variates: 'species' and 'bill_len'
-learnt <- learntExample
+## Use the example "prova_K" (knowledge) object 'Kexample'
+## calculated from the "penguins" dataset;
+## variates: 'species' (nominal, finite domain)
+## and 'bill_len' (continuous rounded, infinite domain)
 
-## mutual information between variates 'species' and 'bill_len'
-MI <- mutualinfo(Y1names = 'species', Y2names = 'bill_len',
-  learnt = learnt, parallel = 1)
+## Mutual information between the two variates;
+## use mutualinfo() because 'bill_len' has infinite domain;
+## set nv = 2 to reduce accuracy but also computation time
+MI <- mutualinfo('species', 'bill_len',  Kexample, nv = 2)
 
-paste0(MI$MI, ' ', MI$unit, collapse = ' +/- ')
-
-## Shannon entropy of variate 'species'
-paste0(MI$En1, ' ', MI$unit, collapse = ' +/- ')
-
-
-\donttest{
-## Shannon entropy of variate 'species',
-## conditional on a bill length of 30 mm:
-entr <- mutualinfo(
-  Y1names = 'species',
-  X = data.frame(bill_len = 30),
-  learnt = learnt, parallel = 1
-)
-
-paste0(entr$En1, ' ', entr$unit, collapse = ' +/- ')
-
-## the entropy is now lower; indeed a penguin with a short bill length
-## is most probably of the 'Adelie' species:
-probs <- Pr(
-  Y = data.frame(species = c('Adelie', 'Gentoo', 'Chinstrap')),
-  X = data.frame(bill_len = 30),
-  learnt = learnt, parallel = 1
-)
-
-print(probs)
-}
+## Print mutual information, its accuracy, and its revisability
+print(MI)
 
 }
 \seealso{
-\code{\link[=Pr]{Pr()}} to calculate probabilities and their variability.
+\code{\link[=print.prova_mi]{print.prova_mi()}} ] to plot mutual information and quantiles calculated by \code{mutualinfo()}
 
-\code{\link[=learn]{learn()}}, which generates the \code{learnt} objects required by \code{mutualinfo()}.
+\code{\link[=hist.prova_mi]{hist.prova_mi()}} to plot the revisability of the mutual information.
+
+\code{\link[=Pr]{Pr()}} to calculate probabilities and their revisability.
+
+\code{\link[=learn]{learn()}}, which generates the "prova_K" (knowledge) objects required by \code{mutualinfo()}.
 }
+\concept{association}

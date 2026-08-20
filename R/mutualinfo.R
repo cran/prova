@@ -1,110 +1,91 @@
-#' Calculate mutual information between groups of joint variates
+#' @name mutualinfo
+#' @rdname mutualinfo
 #'
-#' @description This function calculates various entropic information measures between two grops of joint variates: the mutual information, the conditional entropies, and the entropies.
+#' @title Calculate mutual information between groups of joint variates
 #'
-#' @details If \eqn{Y_1} and \eqn{Y_2} are two variates, each of which can be a joint variate such as \eqn{Y_1 = (Y_{1,1}, Y_{1,2}, \dotsc)}, and \eqn{X} a third, also possibly join, variate, then the mutual information \eqn{\mathit{MI}} between \eqn{Y_1} and \eqn{Y_2}, conditional on \eqn{X = x}, is given by
+#' @description Functions for calculating the mutual information between two grops of joint variates, as well as its revisability. Function [mutualinfo()] can be used for any variates, but is slower and potentially less accurate. Function [mutualinfoF()] is meant to be used with variates having a finite domain, but is extremely faster and more accurate. See "Details"
+#'
+#' @details If \eqn{Y_1} and \eqn{Y_2} are two variates, each of which can be a joint variate such as \eqn{Y_1 = (Y_{1,1}, Y_{1,2}, \dotsc)}, and \eqn{X} a third, also possibly join, variate, then the mutual information \eqn{\mathit{MI}} between \eqn{Y_1} and \eqn{Y_2}, conditional on \eqn{X = x} and the knowledge \eqn{K} about data and metadata, is given by
 #' \deqn{\mathit{MI}(Y_1, Y_2 \vert X = x) \mathrel{:=}
 #' \sum_{y_1, y_2}
-#' \mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, \text{data})
+#' \mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, K)
 #' \log_2\frac{
-#' \mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, \text{data})
+#' \mathrm{Pr}(Y_1 = y_1, Y_2 = y_2 \vert X = x, K)
 #' }{
-#' \mathrm{Pr}(Y_1 = y_1 \vert X = x, \text{data})
+#' \mathrm{Pr}(Y_1 = y_1 \vert X = x, K)
 #' \cdot
-#' \mathrm{Pr}(Y_2 = y_2 \vert X = x, \text{data})
+#' \mathrm{Pr}(Y_2 = y_2 \vert X = x, K)
 #' } \, \mathrm{Sh}
 #' }
-#' an expression which can also be written in several other equivalent ways. It is an information-theoretic measure of association that is model-free, that is, does not depend on assumptions such as linearity, gaussianity, and similar. See `vignette('mutualinfo')` for discussion and example uses, and also the "References" section.  If \eqn{Y_1, Y_2} are *jointly gaussian variates*, then there is a mathematical correspondence between their mutual information and their Pearson correlation coefficient; see output `MI.rGauss` in the "Value" section.
+#' an expression which can also be written in several other equivalent ways. If the variates involved are continuous, the sums are replaced by integrals. Mutual information is a model-free information-theoretic measure of association, that is, it does not depend on assumptions such as linearity, gaussianity, and similar. See `vignette('mutualinfo')` for discussion and example uses, and also the "References" section.  If \eqn{Y_1, Y_2} are *jointly gaussian variates*, then there is a mathematical correspondence between their mutual information and their Pearson correlation coefficient; see output `rGauss` in the "Value" section.
 #'
-#' The conditional entropy of \eqn{Y_1} with respect to \eqn{Y_2}, conditional on \eqn{X = x}, is given by
-#' \deqn{\mathit{CondEn12}(Y_1, Y_2 \vert X = x) \mathrel{:=}
-#' -\sum_{y_1, y_2}
-#' \mathrm{Pr}(Y_1 = y_1 \vert Y_2 = y_2, X = x, \text{data})
-#' \log_2
-#' \mathrm{Pr}(Y_1 = y_1 \vert Y_2 = y_2, X = x, \text{data})
-#' \cdot
-#' \mathrm{Pr}(Y_2 = y_2 \vert X = x, \text{data})
-#' \, \mathrm{Sh}
-#' }
+#' The functions `mutualinfo()` and `mutualinfoF()` calculate the mutual information above for the joint variates specified in the arguments `Y1names` and `Y2names`, conditional on the values of the variates specified in the [data frame][base::data.frame()] `X`. If `X` is omitted or `NULL`, then the posterior probabilities \eqn{\mathrm{Pr}(Y_1 | K)} etc. are used. Each variate in the argument `X` can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument `tails`.
 #'
-#' The (differential) entropy of \eqn{Y_1}, conditional on \eqn{X = x}, is given by
-#' \deqn{\mathit{En1}(Y_1 \vert X = x) \mathrel{:=}
-#' -\sum_{y_1}
-#' \mathrm{Pr}(Y_1 = y_1 \vert X = x, \text{data})
-#' \log_2
-#' \mathrm{Pr}(Y_1 = y_1 \vert  X = x, \text{data})
-#' \, \mathrm{Sh}
-#' }
+#' Function [mutualinfo()] computes the quantities above via Monte Carlo integration; that is, the sums or integrals are approximated by averages over samples drawn with appropriate probabilities. The computation can take tens of minutes if not hours; it can be sped up by using more nodes (if available) in parallel, through the argument `parallel =`. This function should be used if \eqn{Y_1} or \eqn{Y_2} (arguments `Y1names` and `Y2names`) include *continous* variates (see [metadata]).
 #'
-#' see "References" section for discussions about entropy and conditional entropy.
+#' Function [mutualinfoF()] computes the quantities above by calculating all required probabilities (a finite number) and performing the exact sums. This can only be done for variates with finite domains. If continuous variates are involved, a set of probabilities is calculated on a finite grid of their domain; for this reason the results may be grossly in error. This function should be used if \eqn{Y_1} or \eqn{Y_2} (arguments `Y1names` and `Y2names`) include *only* variates with finite domains, typically nominal or ordinal variates (see [metadata]).
 #'
-#' The function `mutualinfo()` calculates the quantities above for the joint variates specified in the arguments `Y1names` and `Y2names`, conditional on the values of the variates specified in the data frame `X`. If `X` is omitted or `NULL`, then the posterior probabilities \eqn{\mathrm{Pr}(Y_1 | \text{data})} etc. are used. Each variate in the argument `X` can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument `tails`.
-#'
-#' The computation of these quantities is done via Monte Carlo integration, using the samples produced by the [learn()] function. The present function also output the numerical error associated with this computation.
+# If either function is called with three unnamed arguments, e.g. `mutualinfo(..., ..., ...)`, then it is interpreted as `mutualinfo(Y1names = ..., Y2names = ..., K = ...)`.
+
 #'
 #' @param Y1names Character vector: first group of joint variates
 #' @param Y2names Character vector or `NULL`: second group of joint variates
 #' @param X Matrix or data.frame or `NULL`: values of some variates conditional on which we want the probabilities.
-#' @param learnt Either a character with the name of a directory or full path
-#'   for an 'learnt.rds' object, or such an object itself.
-#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `X`. For variates in this list, the probability conditional is understood in an semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in [Pr()].
-#' @param n Integer or `NULL` (default): number of samples from which to approximately calculate the mutual information. Default as many as Monte Carlo samples in `learnt`.
+#' @param K A "prova_K" (knowledge) object produced by [learn()]. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one.
+#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `X`. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in [Pr()].
+#' @param quantiles Numeric vector, between 0 and 1: desired quantiles of the revisability of the mutual information. Default `c(0.055, 0.25, 0.75, 0.945)`, that is, the 5.5%, 25%, 75%, 94.5% quantiles. See similar argument in [Pr()].
+#' @param ns Integer or `Inf` or `NULL` (default): number of Monte Carlo samples in the "prova_K" (knowledge) object to use for calculating the mutual information. If `Inf` or `NULL`, use all Monte Carlo samples available in the "prova_K" (knowledge) object.
+#' @param nv Integer, default 12: number of *duplicates* of Monte Carlo samples in the "prova_K" (knowledge) object to use for calculating the revisability of the mutual information.
 #' @param unit Either one of 'Sh' for *shannon* (default), 'Hart' for *hartley*, 'nat' for *natural unit*, or a positive real indicating the base of the logarithms to be used.
-#' @param parallel Logical or positive integer or cluster object. `TRUE` (default): use roughly half of available cores; `FALSE`: use serial computation; integer: use this many cores. It can also be a cluster object previously created with [parallel::makeCluster()]; in this case the parallel computation will use this object.
+#' @param parallel One of the following values:
+#' - A "cluster" object previously created with [parallel::makeCluster()].
+#' - Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+#' - `FALSE`: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+#' - `TRUE` (default): use the cluster that was set as default with [parallel::setDefaultCluster()]; if no such object exists, then generate a cluster with as many nodes as in the [option][base::getOption()] "cl.cores"; if this option is unset, then use 2 nodes.
+#' @param sep character, default `','`: character to separate the output's variate names and values.
+#' @param solidus character, default `'|'`: character prepended to the output's names of the variates in the conditional (typically the `X` variates).
 #' @param verbose Logical, default `FALSE`: give messages about parallel processing?
+#' @param keepX Logical, default `TRUE`: keep a copy of the `X` argument in the output? This is used for [hist.prova_mi()].
 #'
-#' @return A list consisting of the following elements:
+#' @return An object of class "prova_mi" (mutual information), which is a list consisting of the following elements:
 #'
-#' - `MI`, a vector of `value` and `accuracy`: the mutual information between (joint) variates `Y1names` and (joint) variates `Y2names`.
-#' - `CondEn12`, `CondEn21`, vectors of `value` and `accuracy`: the conditional entropy of the first variate given the second, and vice versa.
-#' - `En1`, `En2`, vectors of `value` and `accuracy`: the (differential) entropies of the first and second variates.
-#' - `MI.rGauss`, a vector of `value` and `accuracy`: the absolute value of the Pearson correlation coefficient \eqn{r} of a *multivariate Gaussian distribution* having mutual information `MI`; the two are related by \eqn{\mathrm{MI} = -\ln(1 - r^2)/2}. It may provide a vague intuition for the `MI` value for people more familiar with Pearson's correlation, but should be taken with a grain of salt.
-#' - `unit`, `Y1names`, `Y1names`: same as the input arguments, included for the user's convenience.
+#' - `'value'`, the mutual information between (joint) variates `Y1names` and (joint) variates `Y2names`.
+#' - `'quantiles'`, a vector with the revisability quantiles for the mutual information.
+#' - `'value.acc'`, `quantiles.acc` number and vector with the numerical accuracies (roughly speaking a standard deviation) of the Monte Carlo calculation for the `'value'` and the `'quantiles'` elements.
+#' - `'samples'`, a vector with the revisability samples for the mutual information.
+#' - `'rGauss'`, a vector of `value` and `accuracy`: the absolute value of the Pearson correlation coefficient \eqn{r} of a *multivariate Gaussian distribution* having mutual information `MI`; the two are related by \eqn{\mathrm{MI} = -\ln(1 - r^2)/2}. It may provide a vague intuition for the `MI` value for people more familiar with Pearson's correlation, but should be taken with a grain of salt.
+#' - `'unit'`, `'Y1names'`, `'Y1names'` `'X'`, `'tails'`: copies of the homonymous input arguments.
+#' - `'K'`: name of the "prova_K" (knowledge) object used in the calculation.
 #'
 #' @seealso
-#' [Pr()] to calculate probabilities and their variability.
+#' [print.prova_mi()] ] to plot mutual information and quantiles calculated by `mutualinfo()`
 #'
-#' [learn()], which generates the `learnt` objects required by `mutualinfo()`.
+#' [hist.prova_mi()] to plot the revisability of the mutual information.
+#'
+#' [Pr()] to calculate probabilities and their revisability.
+#'
+#' [learn()], which generates the "prova_K" (knowledge) objects required by `mutualinfo()`.
 #'
 #' @examples
-#' ## Load the example `learnt` object calculated from the "penguins" dataset;
-#' ## variates: 'species' and 'bill_len'
-#' learnt <- learntExample
+#' ## Use the example "prova_K" (knowledge) object 'Kexample'
+#' ## calculated from the "penguins" dataset;
+#' ## variates: 'species' (nominal, finite domain)
+#' ## and 'bill_len' (continuous rounded, infinite domain)
 #'
-#' ## mutual information between variates 'species' and 'bill_len'
-#' MI <- mutualinfo(Y1names = 'species', Y2names = 'bill_len',
-#'   learnt = learnt, parallel = 1)
+#' ## Mutual information between the two variates;
+#' ## use mutualinfo() because 'bill_len' has infinite domain;
+#' ## set nv = 2 to reduce accuracy but also computation time
+#' MI <- mutualinfo('species', 'bill_len',  Kexample, nv = 2)
 #'
-#' paste0(MI$MI, ' ', MI$unit, collapse = ' +/- ')
+#' ## Print mutual information, its accuracy, and its revisability
+#' print(MI)
 #'
-#' ## Shannon entropy of variate 'species'
-#' paste0(MI$En1, ' ', MI$unit, collapse = ' +/- ')
+#' @concept association
+NULL
+
+
+#' @rdname mutualinfo
 #'
-#'
-#' \donttest{
-#' ## Shannon entropy of variate 'species',
-#' ## conditional on a bill length of 30 mm:
-#' entr <- mutualinfo(
-#'   Y1names = 'species',
-#'   X = data.frame(bill_len = 30),
-#'   learnt = learnt, parallel = 1
-#' )
-#'
-#' paste0(entr$En1, ' ', entr$unit, collapse = ' +/- ')
-#'
-#' ## the entropy is now lower; indeed a penguin with a short bill length
-#' ## is most probably of the 'Adelie' species:
-#' probs <- Pr(
-#'   Y = data.frame(species = c('Adelie', 'Gentoo', 'Chinstrap')),
-#'   X = data.frame(bill_len = 30),
-#'   learnt = learnt, parallel = 1
-#' )
-#'
-#' print(probs)
-#' }
-#'
-#' @importFrom extraDistr rcat
-#' @importFrom extraDistr rbern
 #' @import parallel
 #' @import stats
 #' @import utils
@@ -112,16 +93,21 @@
 #' @export
 mutualinfo <- function(
     Y1names,
-    Y2names = NULL,
+    Y2names,
     X = NULL,
-    learnt,
+    K = NULL,
     tails = NULL,
-    n = NULL,
+    quantiles =  c(0.055, 0.25, 0.75, 0.945),
+    ns = NULL,
+    nv = 12,
     unit = 'Sh',
     parallel = TRUE,
-    verbose = FALSE
+    sep = ',',
+    solidus = '|',
+    verbose = FALSE,
+    keepX = TRUE
 ){
-#### Mutual information and conditional entropy between Y2 and Y1
+#### Mutual information between Y2 and Y1
 #### conditional on X, data, prior information
 #### are calculated by Monte Carlo integration:
 #### 0. adjusted component weights are calculated for conditioning on X:
@@ -143,17 +129,21 @@ mutualinfo <- function(
 #### Requested parallel processing
     ## NB: doesn't make sense to have more cores than chains
     closeexit <- FALSE
-    if ('cluster' %in% class(parallel)){
+    if (inherits(parallel, "cluster")){
         ## user provides a cluster object
+        ## use only as many nodes as necessary
+        ncores <- length(parallel)
         cl <- parallel
     } else if (isTRUE(parallel)) {
-        ## user wants us to register a parallel backend
+        ## user wants us to check for or register a parallel backend
         ## and to choose number of cores
-        ncores <- max(1,
-            floor(parallel::detectCores() / 2))
-        cl <- parallel::makeCluster(ncores)
-        closeexit <- TRUE
-        if(verbose){message('Registered ', capture.output(print(cl)), '.')}
+        cl <- parallel::getDefaultCluster()
+        if(is.null(cl)){
+            ncores <- getOption("cl.cores", 2)
+            cl <- parallel::makeCluster(ncores)
+            closeexit <- TRUE
+            if(verbose){message('Registered ', capture.output(print(cl)), '.')}
+        }
     } else if (isFALSE(parallel)) {
         ## user wants us not to use parallel cores
         ncores <- 1
@@ -180,47 +170,40 @@ mutualinfo <- function(
         on.exit(closecoresonexit())
     }
 
-    ## Extract Monte Carlo output & aux-metadata
-    ## If learnt is a string, check if it's a folder name or file name
-    if (is.character(learnt)) {
-        ## Check if 'learnt' is a folder containing learnt.rds
-        if (file_test('-d', learnt) &&
-                file.exists(file.path(learnt, 'learnt.rds'))) {
-            learnt <- readRDS(file.path(learnt, 'learnt.rds'))
-        } else {
-            ## Assume 'learnt' the full path of learnt.rds
-            ## possibly without the file extension '.rds'
-            learnt <- paste0(sub('.rds$', '', learnt), '.rds')
-            if (file.exists(learnt)) {
-                learnt <- readRDS(learnt)
-            } else {
-                stop("The argument 'learnt' must be a folder containing learnt.rds, or the path to an rds-file containing the output from 'learn()'.")
-            }
-        }
-    }
-    ## Add check to see that learnt is correct type of object?
-    auxmetadata <- learnt$auxmetadata
-    learnt$auxmetadata <- NULL
-    learnt$auxinfo <- NULL
-    ncomponents <- nrow(learnt$W)
-    nmcs <- ncol(learnt$W)
-
-    if(is.null(n) || n == 0) {
-        n <- 1 * nmcs
-    } else if(n < 0) {
-        n <- -n * nmcs
-    }
-
-    if(n <= nmcs) {
-        sseq <- sort(sample.int(nmcs, n))
+    ## Figure out unnamed arguments
+    Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
+    if(!is.null(X) && is.null(K)){
+        K <- X
+        X <- NULL
+        Kname <- Kname[2]
     } else {
-        sseq <- c(rep(x = seq_len(nmcs), times = n %/% nmcs),
-            seq_len(nmcs)[sort.int(sample.int(nmcs, n %% nmcs))])
+        Kname <- Kname[1]
     }
+
+    ## Check 'K' argument
+    K <- .retrieveK(K)
+    if(is.null(K)){
+        stop("Argument 'K' must be a 'prova_K' object, or a path to an RDS file with such object, or a path to a directory to a 'K.rds' file.")
+    }
+
+    auxmetadata <- K$auxmetadata
+    K$auxmetadata <- NULL
+    K$auxinfo <- NULL
+    ncomponents <- nrow(K$W)
+    nmcs <- ncol(K$W)
+
+    if(is.null(ns) || !is.finite(ns) || ns == 'all'){ ns <- nmcs }
+    ns <- max(min(ns, nmcs), 2)
+    if(is.null(nv) || !is.finite(nv)){ nv <- 2 }
+    nv <- max(nv, 2)
+
+    ntot <- ns *nv
+
+    sseq <- sort(sample.int(nmcs, ns))
 
     if(all(is.na(X))){X <- NULL}
     if(!is.null(X)){
-        X <- as.data.frame(X)
+        if(!is.data.frame(X)){ X <- as.data.frame(X) }
         if (nrow(X) > 1) {
             warning('Only the first row of X is considered')
             X <- X[1, , drop = FALSE]
@@ -236,8 +219,8 @@ mutualinfo <- function(
     }
     tailsv <- names(tails)
     tailscentre <- list('==', 0, '0', NULL)
-    tailsleft <- list('<=', -1, '-1', 'left')
-    tailsright <- list('>=', 1, '+1', 'right')
+    tailsleft <- list('<=', -1, '-1', 'left', 'lower')
+    tailsright <- list('>=', 1, '+1', 'right', 'upper')
     tailsvalues <- c(tailscentre, tailsleft, tailsright)
 
     ## Consistency checks
@@ -261,49 +244,49 @@ mutualinfo <- function(
     }
 
     ## More consistency checks
-    if(!all(Y1names %in% auxmetadata$name)) {
+    if(!all(Y1names %in% auxmetadata$name)){
         stop('unknown Y1 variates\n')
     }
-    if(length(unique(Y1names)) != length(Y1names)) {
+    if(anyDuplicated(Y1names)){
         stop('duplicate Y1 variates\n')
     }
     ##
     if(!is.null(Y2names) && !all(Y2names %in% auxmetadata$name)){
         stop('unknown Y2 variates\n')
     }
-    if(length(unique(Y2names)) != length(Y2names)) {
+    if(anyDuplicated(Y2names)){
         stop('duplicate Y2 variates\n')
     }
 
 
-    if (!all(Xv %in% auxmetadata$name)) {
+    if(!all(Xv %in% auxmetadata$name)){
         stop('unknown X variates\n')
     }
-    if (length(unique(Xv)) != length(Xv)) {
+    if(anyDuplicated(Xv)){
         stop('duplicate X variates\n')
     }
     ##
-    if(any(Y1names %in% Y2names)) {
+    if(anyDuplicated(c(Y1names, Y2names))){
         stop('overlap in Y1 and Y2 variates\n')
     }
-    if(any(Y1names %in% Xv)) {
+    if(anyDuplicated(c(Y1names, Xv))){
         stop('overlap in Y1 and X variates\n')
     }
-    if(any(Y2names %in% Xv)) {
+    if(anyDuplicated(c(Y2names, Xv))){
         stop('overlap in Y2 and X variates\n')
     }
 
-    if (!all(tailsv %in% Xv)) {
+    if(!all(tailsv %in% Xv)){
         warning('variate ',
             paste0(tailsv[!(tailsv %in% Xv)], collapse = ' '),
             ' not among X; ignored\n')
         tails <- tails[tailsv %in% Xv]
         tailsv <- names(tails)
     }
-    if (length(unique(tailsv)) != length(tailsv)) {
+    if(anyDuplicated(tailsv)){
         stop('duplicate "tails" variates\n')
     }
-    if(!all(tails %in% tailsvalues)) {
+    if(!all(tails %in% tailsvalues)){
         stop('"tails" values must be ',
             paste0(tailsvalues, collapse = ' '), '\n')
     }
@@ -325,37 +308,47 @@ mutualinfo <- function(
 
 #### Step 0. Adjust component weights W for conditioning on X
     if(is.null(X)){
-        lW <- log(learnt$W)
+        lW <- log(K$W)
     } else {
-        lpargs <- util_lprobsargsyx(
+        lpargs <- .lprobsargsyx(
             x = X,
             auxmetadata = auxmetadata,
-            learnt = learnt,
+            K = K,
             tails = tails
         )
 
-        lW <- util_lprobsbase(
+        lW <- .lprobsbase(
             xVs = lpargs$xVs[[1]],
             params = lpargs$params,
-            logW =  log(learnt$W)
+            logW =  log(K$W)
         ) # rows=components, columns=samples
 
     } # end definition of lW if non-null X
-
 
 #### Combine Y1,Y2 into single Y for speed
     Ynames <- c(Y1names, Y2names)
 
 #### STEP 1. Draw samples of Ynames (that is, Y1names,Y2names)
-
-    lWnorm <- util_denorm(lW)
-    Ws <- extraDistr::rcat(n = n, prob = t(
-        apply(X = lWnorm[, sseq, drop = FALSE], MARGIN = 2, FUN = function(xx){
-            xx <- exp(xx)
-            xx / sum(xx, na.rm = TRUE)
-        }, simplify = TRUE)
-    ))
-
+    Wdenorm <- exp(.denorm(lW[, sseq, drop = FALSE]))
+    Ws <- c(replicate(n = nv, expr = apply(
+        X = Wdenorm, MARGIN = 2,
+        FUN = function(xx){sample.int(n = ncomponents, size = 1, prob = xx)},
+        simplify = TRUE
+    ), simplify = 'array'))
+    rm(Wdenorm)
+    gc(full = TRUE)
+    ## ## ## Old version with extraDistr::rcatlp()
+    ## ## extraDistr::rcatlp() can use non-normalized probabilities
+    ## ## NOTA BENE: the '1 - ...' is because of a bug in rcatlp() < 1.10.0.5
+    ## Ws <- 1 - extraDistr::rcatlp(n = 1, log_prob = 0) +
+    ##     extraDistr::rcatlp(n = ntot, log_prob = t(lW[, sseq, drop = FALSE]))
+    ## ## Old version with extraDistr::cat(), can be 10 times slower
+    ## Ws <- extraDistr::rcat(n = n, prob = t(
+    ##     apply(X = lWnorm[, sseq, drop = FALSE], MARGIN = 2, FUN = function(xx){
+    ##         xx <- exp(xx)
+    ##         xx / sum(xx, na.rm = TRUE)
+    ##     }, simplify = TRUE)
+    ## ))
     Yout <- NULL
     vYout <- NULL
 
@@ -366,11 +359,11 @@ mutualinfo <- function(
     if(nvrt > 0){
         aux <- auxmetadata[toselect, ]
         vYout <- c(vYout, aux$name)
-        totake <- cbind(rep.int(x = aux$id, times = rep(n, nvrt)), Ws, sseq)
+        totake <- cbind(rep(x = aux$id, each = ntot), Ws, sseq)
         Yout <- c(Yout,
-            rnorm(n = n * nvrt,
-                mean = learnt$Rmean[totake],
-                sd = learnt$Rsd[totake] )
+            rnorm(n = ntot * nvrt,
+                mean = K$Rmean[totake],
+                sd = K$Rsd[totake] )
         )
     }
 
@@ -381,11 +374,11 @@ mutualinfo <- function(
     if(nvrt > 0){
         aux <- auxmetadata[toselect, ]
         vYout <- c(vYout, aux$name)
-        totake <- cbind(rep.int(x = aux$id, times = rep(n, nvrt)), Ws, sseq)
+        totake <- cbind(rep(x = aux$id, each = ntot), Ws, sseq)
         Yout <- c(Yout,
-            rnorm(n = n * nvrt,
-                mean = learnt$Cmean[totake],
-                sd = learnt$Csd[totake] )
+            rnorm(n = ntot * nvrt,
+                mean = K$Cmean[totake],
+                sd = K$Csd[totake] )
         )
     }
 
@@ -396,11 +389,11 @@ mutualinfo <- function(
     if(nvrt > 0){
         aux <- auxmetadata[toselect, ]
         vYout <- c(vYout, aux$name)
-        totake <- cbind(rep.int(x = aux$id, times = rep(n, nvrt)), Ws, sseq)
+        totake <- cbind(rep(x = aux$id, each = ntot), Ws, sseq)
         Yout <- c(Yout,
-            rnorm(n = n * nvrt,
-                mean = learnt$Dmean[totake],
-                sd = learnt$Dsd[totake] )
+            rnorm(n = ntot * nvrt,
+                mean = K$Dmean[totake],
+                sd = K$Dsd[totake] )
         )
     }
 
@@ -412,14 +405,21 @@ mutualinfo <- function(
         vYout <- c(vYout, auxmetadata$name[toselect])
         for(i in toselect) {
             aux <- auxmetadata[i, ]
-            totake <- cbind(Ws, sseq)
-            Yout <- c(Yout,
-                extraDistr::rcat(n = n,
-                    prob = apply(
-                        X = learnt$Oprob[aux$indexpos + seq_len(aux$Nvalues), ,],
-                        MARGIN = 1, FUN = `[`, totake,
-                        simplify = TRUE) )
-            )
+            Yout <- c(Yout, mapply(
+                FUN = function(xx, yy){
+                sample.int(n = aux$Nvalues, size = 1,
+                    prob = K$Oprob[aux$indexpos + seq_len(aux$Nvalues),
+                        xx, yy])},
+                Ws, sseq, SIMPLIFY = TRUE) )
+            ## ## old version with extraDistr::rcat()
+            ## totake <- cbind(Ws, sseq)
+            ## Yout <- c(Yout,
+            ##     extraDistr::rcat(n = ntot,
+            ##         prob = apply(
+            ##             X = K$Oprob[aux$indexpos + seq_len(aux$Nvalues), ,],
+            ##             MARGIN = 1, FUN = `[`, totake,
+            ##             simplify = TRUE) )
+            ## )
         }
     }
 
@@ -431,14 +431,21 @@ mutualinfo <- function(
         vYout <- c(vYout, auxmetadata$name[toselect])
         for(i in toselect) {
             aux <- auxmetadata[i, ]
-            totake <- cbind(Ws, sseq)
-            Yout <- c(Yout,
-                extraDistr::rcat(n = n,
-                    prob = apply(
-                        X = learnt$Nprob[aux$indexpos + seq_len(aux$Nvalues), ,],
-                        MARGIN = 1, FUN = `[`, totake,
-                        simplify = TRUE) )
-            )
+            Yout <- c(Yout, mapply(
+                FUN = function(xx, yy){
+                sample.int(n = aux$Nvalues, size = 1,
+                    prob = K$Nprob[aux$indexpos + seq_len(aux$Nvalues),
+                        xx, yy])},
+                Ws, sseq, SIMPLIFY = TRUE) )
+            ## ## old version with extraDistr::rcat()
+            ## totake <- cbind(Ws, sseq)
+            ## Yout <- c(Yout,
+            ##     extraDistr::rcat(n = ntot,
+            ##         prob = apply(
+            ##             X = K$Nprob[aux$indexpos + seq_len(aux$Nvalues), ,],
+            ##             MARGIN = 1, FUN = `[`, totake,
+            ##             simplify = TRUE) )
+            ## )
         }
     }
 
@@ -449,18 +456,19 @@ mutualinfo <- function(
     if(nvrt > 0){
         aux <- auxmetadata[toselect, ]
         vYout <- c(vYout, aux$name)
-        totake <- cbind(rep.int(x = aux$id, times = rep(n, nvrt)), Ws, sseq)
+        totake <- cbind(rep(x = aux$id, each = ntot), Ws, sseq)
         Yout <- c(Yout,
-            extraDistr::rbern(n = n * nvrt,
-                prob = learnt$Bprob[totake])
+            rbinom(n = ntot * nvrt, size = 1, prob = K$Bprob[totake])
+            ## ## Old version
+            ## extraDistr::rbern(n = ntot * nvrt, prob = K$Bprob[totake])
         )
     }
 
-    dim(Yout) <- c(n, length(Ynames))
+    dim(Yout) <- c(ntot, length(Ynames))
     Yout <- Yout[, match(Ynames, vYout), drop = FALSE]
     colnames(Yout) <- Ynames
 
-    Yout <- vtransform(Yout,
+    Yout <- .vtransform(Yout,
         auxmetadata = auxmetadata,
         Rout = 'original',
         Cout = 'original',
@@ -469,84 +477,536 @@ mutualinfo <- function(
         Nout = 'original',
         Bout = 'original',
         logjacobianOr = NULL)
+    ## The rows of Yout corresponds to nv repetitions of ns MCsamples, eg:
+    ## MCsample 3
+    ## MCsample 5
+    ## MCsample 8
+    ## MCsample 3 again
+    ## MCsample 5 again
+    ## MCsample 8 again
+    # etc
 
     Y1transf <- Yout[, Y1names, drop = FALSE]
     Y2transf <- Yout[, Y2names, drop = FALSE]
     rm(Yout)
-    gc()
+    gc(full = TRUE)
 
 
-#### STEP 2. Calculate sum_i log2_p(Y1|Y2) for all samples
-    lpargs1 <- util_lprobsargsyx(
+#### STEP 2. Calculate, for each generated datapoint:
+#### log2_p(Y1|Y2),
+#### log2_p(Y2|Y1)
+#### log2_p(Y1)
+#### log2_p(Y2)
+
+    ## Keep track of the MC-sample id of each datapoint
+    ids <- rep.int(x = sseq, times = nv)
+
+    lpargs1 <- .lprobsargsyx(
         x = Y1transf,
         auxmetadata = auxmetadata,
-        learnt = learnt,
-        tails = NULL
+        K = K,
+        tails = NULL,
+        ids = ids
     )
 
-    lpargs2 <- util_lprobsargsyx(
+    lpargs2 <- .lprobsargsyx(
         x = Y2transf,
         auxmetadata = auxmetadata,
-        learnt = learnt,
-        tails = NULL
+        K = K,
+        tails = NULL,
+        ids = ids
     )
 
+    ## each instance of .lprobsmi() takes one datapoint
     out <- do.call(rbind,
         parallel::parLapply(cl = cl,
-        X = mapply(c, lpargs1$xVs, lpargs2$xVs, SIMPLIFY = FALSE),
-        fun = util_lprobsmi,
-        params1 = lpargs1$params,
-        params2 = lpargs2$params,
-        lWnorm = lWnorm,
-        lW = lW
-        )
-        )
+            X = mapply(c, lpargs1$xVs, lpargs2$xVs, SIMPLIFY = FALSE),
+            fun = .lprobsmi,
+            params1 = lpargs1$params,
+            params2 = lpargs2$params,
+            lW = lW)
+    )
+    ## 'out' is a matrix with as many rows as the datapoints,
+    ## and with columns corresponding to
+    ## their probabilities (calculated from all MC samples)
+    ## and their "limit frequencies" (calculated from MC samples
+    ## from which the corresponding input datapoints were drawn)
 
-    ## Jacobian factors
-    logjacobians1 <- rowSums(
-        as.matrix(vtransform(Y1transf,
-            auxmetadata = auxmetadata,
-            logjacobianOr = FALSE)),
-        na.rm = TRUE)
+    ## ## Jacobian factors unneeded because we only output the MI
+    ## logjacobians1 <- rowSums(
+    ##     as.matrix(.vtransform(Y1transf,
+    ##         auxmetadata = auxmetadata,
+    ##         logjacobianOr = FALSE)),
+    ##     na.rm = TRUE)
+    ##
+    ## logjacobians2 <- rowSums(
+    ##     as.matrix(.vtransform(Y2transf,
+    ##         auxmetadata = auxmetadata,
+    ##         logjacobianOr = FALSE)),
+    ##     na.rm = TRUE)
 
-    logjacobians2 <- rowSums(
-        as.matrix(vtransform(Y2transf,
-            auxmetadata = auxmetadata,
-            logjacobianOr = FALSE)),
-        na.rm = TRUE)
+    ## Separate columns for MI with columns for its revisability
+    outsamples <- out[, 'fMI']
+    ## ids <- out[,3] # for debugging
+    ## dim(ids) <- c(ns, nv) # for debugging
+    out <- out[, 'pMI']
 
-    out[, c('CondEn12', 'CondEn21', 'En1', 'En2')] <-
-        out[, c('CondEn12', 'CondEn21', 'En1', 'En2')] -
-        c(logjacobians1, logjacobians2)
+    dim(outsamples) <- c(ns, nv)
+    outsamples <- rowMeans(x = outsamples, na.rm = TRUE)
+    outsamples[outsamples < 0] <- 0
 
-    out <- unlist(apply(
-        X = rbind(
-            value = colMeans(x = out, na.rm = TRUE) / lbase,
-            accuracy = signif(x = apply(
-                X = out, MARGIN = 2, FUN = sd, na.rm = TRUE, simplify = TRUE
-            ) / (sqrt(n) * lbase), digits = 2)
-        ),
-        MARGIN = 2, FUN = list, simplify = TRUE), recursive = FALSE)
+    ## report whether the probabilities are 'tails' or not
+    if(!is.null(tails)){
+        outtails <- list()
+        outtails[colnames(X)] <- ''
+        outtails[names(tails)[tails == -1]] <- '>'
+        outtails[names(tails)[tails == 1]] <- '<'
+    } else {
+        outtails <- NULL
+    }
 
-    if(out$MI['value'] < 0){
-        out$MI['accuracy'] <- out$MI['accuracy'] + out$MI['value']
-        out$MI['value'] <- 0
+    ## Output
+    ## Important that MI is in *nats* now to calculate rGauss later
+    MI <- mean(out)
+    if(MI < 0){ MI <- 0 }
+
+    acc <- .funMCSELD(x = out)
+    ## acc <- sd(out, na.rm = TRUE) / sqrt(ntot)
+    dim(MI) <- dim(acc) <- length(MI)
+
+    outquantiles <- quantile(outsamples, probs = quantiles, type = 6,
+        na.rm = TRUE, names = TRUE)
+
+    Qerror <- pnorm(c(-1, 1))
+    temp <- .funMCEQ(x = outsamples, prob = quantiles, Qpair = Qerror)
+    quantiles.acc <- (temp[2, ] - temp[1, ]) / 2
+
+    qnames <- names(outquantiles) # used later, lost below
+    dim(outquantiles) <- dim(quantiles.acc) <- c(1, length(quantiles))
+    dim(outsamples) <- c(1, length(outsamples))
+
+    ## report whether the probabilities are 'tails' or not
+    if(!is.null(tails)){
+        outtails <- list()
+        outtails[colnames(X)] <- ''
+        outtails[names(tails)[tails == -1]] <- '>'
+        outtails[names(tails)[tails == 1]] <- '<'
+    } else {
+        outtails <- NULL
+    }
+
+    if(!is.null(X)){
+        Xnames <- setNames(object = list(
+            apply(X = X, MARGIN = 1, FUN = paste0, collapse = sep,
+                simplify = TRUE)),
+            nm = paste0(solidus,
+                paste0(colnames(X), outtails[colnames(X)], collapse = sep)) )
+    } else {
+        Xnames <- list(NULL)
+    }
+
+    dimnames(MI) <- dimnames(acc) <- Xnames
+    dimnames(outquantiles) <- dimnames(quantiles.acc) <-
+        c(Xnames, list(qnames))
+    dimnames(outsamples) <- c(Xnames, list(NULL))
+
+    out <- c(list(
+        value = MI / lbase,
+        value.acc = acc / lbase,
+        quantiles = outquantiles / lbase,
+        quantiles.acc = quantiles.acc / lbase,
+        samples = outsamples / lbase,
+        rGauss = sqrt(1 - exp(-2 * MI)),
+        unit = unit,
+        Y1names = Y1names,
+        Y2names = Y2names
+        ## , ids = rowMeans(ids) # for debugging
+    ),
+    if(isTRUE(keepX)){
+                list(X = X)
+    },
+    if(!is.null(outtails)){
+        list(tails = outtails[!(outtails == '')])
+    },
+    list(K = Kname)
+    )
+
+    class(out) <- 'prova_mi'
+    out
+}
+
+
+
+#' @rdname mutualinfo
+#'
+#' @import parallel
+#' @import stats
+#' @import utils
+#'
+#' @export
+mutualinfoF <- function(
+    Y1names,
+    Y2names,
+    X = NULL,
+    K = NULL,
+    tails = NULL,
+    quantiles =  c(0.055, 0.25, 0.75, 0.945),
+    unit = 'Sh',
+    parallel = TRUE,
+    sep = ',',
+    solidus = '|',
+    verbose = FALSE,
+    keepX = TRUE
+){
+#### Requested parallel processing
+    ## NB: doesn't make sense to have more cores than chains
+    closeexit <- FALSE
+    if (inherits(parallel, "cluster")){
+        ## user provides a cluster object
+        ## use only as many nodes as necessary
+        ncores <- length(parallel)
+        cl <- parallel
+    } else if (isTRUE(parallel)) {
+        ## user wants us to check for or register a parallel backend
+        ## and to choose number of cores
+        cl <- parallel::getDefaultCluster()
+        if(is.null(cl)){
+            ncores <- getOption("cl.cores", 2)
+            cl <- parallel::makeCluster(ncores)
+            closeexit <- TRUE
+            if(verbose){message('Registered ', capture.output(print(cl)), '.')}
+        }
+    } else if (isFALSE(parallel)) {
+        ## user wants us not to use parallel cores
+        ncores <- 1
+        cl <- parallel::makeCluster(ncores)
+        closeexit <- TRUE
+    } else if (is.numeric(parallel) &&
+                   is.finite(parallel) && parallel >= 1) {
+        ## user wants us to register 'parallel' # of cores
+        ncores <- parallel
+        cl <- parallel::makeCluster(ncores)
+        closeexit <- TRUE
+        if(verbose){message('Registered ', capture.output(print(cl)), '.')}
+    } else {
+        stop("Unknown value of argument 'parallel'.")
+    }
+
+    ## Close parallel connections if any were opened
+    if(closeexit) {
+        closecoresonexit <- function(){
+            if(verbose){message('Closing connections to cores.')}
+            parallel::stopCluster(cl)
+            ## parallel::setDefaultCluster(NULL)
+        }
+        on.exit(closecoresonexit())
+    }
+
+    ## Figure out unnamed arguments
+    Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
+    if(!is.null(X) && is.null(K)){
+        K <- X
+        X <- NULL
+        Kname <- Kname[2]
+    } else {
+        Kname <- Kname[1]
+    }
+
+    ## Check 'K' argument
+    K <- .retrieveK(K)
+    if(is.null(K)){
+        stop("Argument 'K' must be a 'prova_K' object, or a path to an RDS file with such object, or a path to a directory to a 'K.rds' file.")
+    }
+
+    auxmetadata <- K$auxmetadata
+
+    if(all(is.na(X))){X <- NULL}
+    if(!is.null(X)){
+        if(!is.data.frame(X)){ X <- as.data.frame(X) }
+        ## if (nrow(X) > 1) {
+        ##     warning('Only the first row of X is considered')
+        ##     X <- X[1, , drop = FALSE]
+        ## }
+    }
+    Xv <- colnames(X)
+
+    if(!is.null(tails)){
+        tails <- as.list(tails)
+        if(is.null(names(tails))) {
+            stop('Missing variate names in "tails"')
+        }
+    }
+    tailsv <- names(tails)
+    tailscentre <- list('==', 0, '0', NULL)
+    tailsleft <- list('<=', -1, '-1', 'left', 'lower')
+    tailsright <- list('>=', 1, '+1', 'right', 'upper')
+    tailsvalues <- c(tailscentre, tailsleft, tailsright)
+
+    ## Consistency checks
+    if (unit == 'Sh') {
+        lbase <- log(2)
+    } else if (unit == 'Hart') {
+        lbase <- log(10)
+    } else if (unit == 'nat') {
+        lbase <- 1
+    } else if (is.numeric(unit) && unit > 0) {
+        lbase <- log(unit)
+    } else {
+        stop("unit must be 'Sh', 'Hart', 'nat', or a positive real")
+    }
+
+    if(!is.character(Y1names) || any(is.na(Y1names))){
+        stop('Y1names must be a vector of variate names')
+    }
+    if(!is.null(Y2names) && (!is.character(Y2names) || any(is.na(Y2names)))){
+        stop('Y2names must be NULL or a vector of variate names')
+    }
+
+    ## More consistency checks
+    if(!all(Y1names %in% auxmetadata$name)){
+        stop('unknown Y1 variates\n')
+    }
+    if(anyDuplicated(Y1names)){
+        stop('duplicate Y1 variates\n')
+    }
+    ##
+    if(!is.null(Y2names) && !all(Y2names %in% auxmetadata$name)){
+        stop('unknown Y2 variates\n')
+    }
+    if(anyDuplicated(Y2names)){
+        stop('duplicate Y2 variates\n')
     }
 
 
-    ## ## generally there's no MI maximum for continous variates
-    ## mmax <- paste0('En', which.min(c(out$En1['value'], out$En2['value'])) )
-    rgauss <- sqrt(1 - exp(-2 * out$MI['value'] * lbase))
+    if(!all(Xv %in% auxmetadata$name)){
+        stop('unknown X variates\n')
+    }
+    if(anyDuplicated(Xv)){
+        stop('duplicate X variates\n')
+    }
+    ##
+    if(anyDuplicated(c(Y1names, Y2names))){
+        stop('overlap in Y1 and Y2 variates\n')
+    }
+    if(anyDuplicated(c(Y1names, Xv))){
+        stop('overlap in Y1 and X variates\n')
+    }
+    if(anyDuplicated(c(Y2names, Xv))){
+        stop('overlap in Y2 and X variates\n')
+    }
 
-    c(out,
-        list(#MImax = out[[mmax]],
-            MI.rGauss = c(
-                rgauss,
-                signif(x = out$MI['accuracy'] *
-                           exp(-2 * out$MI['value'] * lbase) / rgauss,
-                    digits = 2)
-            ),
-            unit = unit, Y1names = Y1names, Y2names = Y2names
-        )
+    if(!all(tailsv %in% Xv)){
+        warning('variate ',
+            paste0(tailsv[!(tailsv %in% Xv)], collapse = ' '),
+            ' not among X; ignored\n')
+        tails <- tails[tailsv %in% Xv]
+        tailsv <- names(tails)
+    }
+    if(anyDuplicated(tailsv)){
+        stop('duplicate "tails" variates\n')
+    }
+    if(!all(tails %in% tailsvalues)){
+        stop('"tails" values must be ',
+            paste0(tailsvalues, collapse = ' '), '\n')
+    }
+
+    ## transform 'tails' to -1, +1
+    ## +1: '<=',    -1: '>='
+    ## this is opposite of the argument convention because
+    ## interval probabilities are calculated with `lower.tail = TRUE`
+    ## eg:
+    ## pnorm(x, mean, sd, lower.tail = FALSE) ==
+    ##     pnorm(-x, -mean, sd, lower.tail = TRUE)
+    tails[tails %in% tailscentre] <- NULL
+    cleft <- tails %in% tailsleft
+    cright <- tails %in% tailsright
+    tails[cleft] <- +1
+    tails[cright] <- -1
+    tails <- unlist(tails)
+
+    ## Calculate probabilities over the domains created with vrtgrid()
+    ## Probabilities for Y1, Y2, Y12 are calculated one at a time
+    ## and immediately added to MI etc, to save memory
+
+    MI <- acc <- array(0, dim = max(1, nrow(X)))
+
+    outsamples <- array(0, dim = c(max(1, nrow(X)), nrow(K$W)))
+
+### Joint
+    pp <- Pr(vrtgrid(vrt = c(Y1names, Y2names), K = K), X = X, K = K,
+        parallel = cl)
+    pp[c('density', 'Y', 'tails', 'K')] <- NULL
+
+    MI <- MI + colSums(pp[['value']] * log(pp[['value']]), na.rm = TRUE)
+    acc <- acc + colSums(pp[['value.acc']] * abs(1 + log(pp[['value']])),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        MI <- MI + temp2
+        ##
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- colSums(pp[['value.acc']], na.rm = TRUE)[totake] *
+            abs(1 + log(1 - temp[totake]))
+        acc <- acc + temp2
+        rm(temp2)
+    }
+
+    outsamples <- colSums(pp[['samples']] * log(pp[['samples']]),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        outsamples <- outsamples + temp2
+        rm(temp2)
+    }
+    rm(temp)
+
+### Y1
+    pp <- Pr(vrtgrid(vrt = Y1names, K = K), X = X, K = K, parallel = cl)
+    pp[c('density', 'Y', 'tails', 'K')] <- NULL
+
+    MI <- MI - colSums(pp[['value']] * log(pp[['value']]), na.rm = TRUE)
+    acc <- acc + colSums(pp[['value.acc']] * abs(1 + log(pp[['value']])),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        MI <- MI - temp2
+        ##
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- colSums(pp[['value.acc']], na.rm = TRUE)[totake] *
+            abs(1 + log(1 - temp[totake]))
+        acc <- acc + temp2
+        rm(temp2)
+    }
+
+    outsamples <- outsamples - colSums(pp[['samples']] * log(pp[['samples']]),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        outsamples <- outsamples - temp2
+        rm(temp2)
+    }
+    rm(temp)
+    gc(full = TRUE)
+
+### Y2
+    pp <- Pr(vrtgrid(vrt = Y2names, K = K), X = X, K = K, parallel = cl)
+    pp[c('density', 'Y', 'tails', 'K')] <- NULL
+
+    MI <- MI - colSums(pp[['value']] * log(pp[['value']]), na.rm = TRUE)
+    acc <- acc + colSums(pp[['value.acc']] * abs(1 + log(pp[['value']])),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        MI <- MI - temp2
+        ##
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- colSums(pp[['value.acc']], na.rm = TRUE)[totake] *
+            abs(1 + log(1 - temp[totake]))
+        acc <- acc + temp2
+        rm(temp2)
+    }
+
+    outsamples <- outsamples - colSums(pp[['samples']] * log(pp[['samples']]),
+        na.rm = TRUE)
+
+    temp <- colSums(pp[['value']], na.rm = TRUE)
+    totake <- (1 - temp > 10 * .Machine$double.eps)
+    if(any(totake)){
+        temp2 <- numeric(length(temp))
+        temp2[totake] <- (1 - temp[totake]) * log(1 - temp[totake])
+        outsamples <- outsamples - temp2
+        rm(temp2)
+    }
+    rm(temp, pp)
+    gc(full = TRUE)
+
+    ## report whether the probabilities are 'tails' or not
+    if(!is.null(tails)){
+        outtails <- list()
+        outtails[colnames(X)] <- ''
+        outtails[names(tails)[tails == -1]] <- '>'
+        outtails[names(tails)[tails == 1]] <- '<'
+    } else {
+        outtails <- NULL
+    }
+
+    if(!is.null(X)){
+        Xnames <- setNames(object = list(
+            apply(X = X, MARGIN = 1, FUN = paste0, collapse = sep,
+                simplify = TRUE)),
+            nm = paste0(solidus,
+                paste0(colnames(X), outtails[colnames(X)], collapse = sep)) )
+    } else {
+        Xnames <- list(NULL)
+    }
+
+    dimnames(MI) <- dimnames(acc) <- Xnames
+
+    Qerror <- pnorm(c(-1, 1))
+    outquantiles <- t(apply(
+        X = outsamples, MARGIN = 1,
+        FUN = function(FF){
+            temp <- .funMCEQ(x = FF, prob = quantiles,
+                Qpair = Qerror)
+            c(
+                quantile(x = FF, probs = quantiles, type = 6,
+                    na.rm = TRUE, names = FALSE),
+                (temp[2, ] - temp[1, ]) / 2
+            )}
+    ))
+
+    temp <- list(Q = rep.int(x = names(quantile(x = NA, probs = quantiles,
+        names = TRUE, na.rm = TRUE)), times = 2))
+    dimnames(outquantiles) <- c(Xnames, temp)
+
+    ## Output
+    out <- c(list(
+        value = MI / lbase,
+        value.acc = acc / lbase,
+        quantiles = outquantiles[ , seq_along(quantiles), drop = FALSE] / lbase,
+        ## quantile(outsamples, probs = quantiles,
+        ##     type = 6, na.rm = TRUE, names = TRUE) / lbase,
+        quantiles.acc = outquantiles[ , -seq_along(quantiles), drop = FALSE] / lbase,
+        ## {
+        ##     temp <- .funMCEQ(x = outsamples, prob = quantiles, Qpair = Qerror)
+        ##     (temp[2, ] - temp[1, ]) / (2 * lbase)
+        ## },
+        samples = outsamples / lbase,
+        rGauss = sqrt(1 - exp(-2 * MI)),
+        unit = unit,
+        Y1names = Y1names,
+        Y2names = Y2names
+        ## , ids = rowMeans(ids) # for debugging
+    ),
+    if(isTRUE(keepX)){
+                list(X = X)
+    },
+    if(!is.null(outtails)){
+        list(tails = outtails[!(outtails == '')])
+    },
+    list(K = Kname)
     )
+
+    class(out) <- 'prova_mi'
+    out
 }

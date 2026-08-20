@@ -1,8 +1,8 @@
-#' Metadata and helper function for metadata
+#' @name metadata
 #'
-#' Metadata and helper function to create a template metadata file or object.
+#' @title Metadata and helper function to create a template metadata file or object.
 #'
-#' The [learn()] function needs metadata about the variates present in the data. Such metadata can be provided either as a `csv` file or as a [base::data.frame()]. The function `buildmetadata` creates a template metadata csv-file, or outputs a metadata data.frame, by trying to *guess* metadata information from the dataset.The guesses may be very incorrect (as already said, metadata is information not contained in the data, so no algorithm can exist that extracts it from the data). **The user *must* modify and correct this template, using it as a starting point to prepare the correct metadata information.**
+#' @description The [learn()] function needs metadata about the variates present in the data. Such metadata can be provided either as a `csv` file or as a [base::data.frame()]. The function `buildmetadata` creates a template metadata csv-file, or outputs a metadata data.frame, by trying to *guess* metadata information from the dataset.The guesses may be very incorrect (as already said, metadata is information not contained in the data, so no algorithm can exist that extracts it from the data). **The user *must* modify and correct this template, using it as a starting point to prepare the correct metadata information.**
 #'
 #' @param data A dataset, given as a [data frame][base::data.frame()]
 #' or as a file path to a csv file.
@@ -43,15 +43,15 @@
 #'
 #' - A *continuous* variate has a continuum of values with an intrinsic ordering. Examples could be a variate related to the width of an object; or to the age of a person; or one coordinate of an object in a particular reference system. A continuous variate requires specification of the fields `domainmin`, `domainmax`, `datastep`, `minincluded`, `maxincluded`. Some naturally continuous variates are often rounded to a given precision; for instance, the age of a person might be reported as rounded to the nearest year (25 years, 26 years, and so on); or the length of an object might be reported to the nearest centimetre (1 m, 1.01 m, 1.02 m, and so on). The minimum distance between such rounded values **must** be reported in the `datastep` field; this would be `1` in the age example and `0.01` in the length example above. See below for further explanation of why reporting such rounding is important.
 #'
-#' **`domainmin`**: The minimum value that the variate (ordinal or continuous) can take on. Possible values are a real number or an empty value, which is then interpreted as `-Inf` (explicit values like `-Inf`, `-inf`, `-infinity` should also work). Some continuous variates, like age or distance or temperature, are naturally positive, and therefore have `domainmin` equal `0`. But in other contexts the minimum value could be different. For instance, if a given inference problem only involves people of age 18 or more, then `domainmin` would be set to `18`.
+#' **`domainmin`**: The minimum value that the variate (ordinal or continuous) can take on. Possible values are a real number or an empty value, which is then interpreted as `-Inf` (explicit values like `-Inf`, `-inf`, `-infinity` should also work). Some continuous variates, like age or distance or temperature, are naturally positive, and therefore have `domainmin` equal `0`. But in other contexts the minimum value could be different. For instance, if a given inference problem only involves people of age 18 or more, then `domainmin` would be set to `18`. The `domainmin` field is also used for a *left-censored* or *interval-censored* variate, together with the `minincluded` field set to `true`.
 #'
-#' **`domainmax`**: The maximum value that the variate (ordinal or continuous) can take on. Possible values are a real number, or an empty value, which is then interpreted as `+Inf` (explicit values like `Inf`, `inf`, `infinity` should also work). As with `domainmin`, the maximum value depends on the context. An age-related variate could theoretically have `domainmax` equal to infinity (empty value in the metadata file); but if a given study categorizes some people as "90 years old or older", then `domainmax` should be set to `90`.
+#' **`domainmax`**: The maximum value that the variate (ordinal or continuous) can take on. Possible values are a real number, or an empty value, which is then interpreted as `+Inf` (explicit values like `Inf`, `inf`, `infinity` should also work). As with `domainmin`, the maximum value depends on the context. An age-related variate could theoretically have `domainmax` equal to infinity (empty value in the metadata file); but if a given study categorizes some people as "90 years old or older", then `domainmax` should be set to `90`. The `domainmax` field is also used for a *right-censored* or *interval-censored* variate, together with the `maxincluded` field set to `true`.
 #'
 #' **`datastep`**: The minimum distance between the values of a variate (ordinal or continuous). Possible values are a positive real number or an empty value, which is then interpreted as 0 (the explicit value `0` is also accepted). For a numeric ordinal variate, `datastep` is the step between consecutive values. For a continuous *rounded* variate, `datastep` is the minimum distance between different values that occurs because of rounding; see the examples given above. The function `buildmetadata` has some heuristics to determine whether the variate is rounded or not. See further details under the section Rounding below.
 #'
-#' **`minincluded`**, **`maxincluded`**: Whether the minimum (`domainmin`) and maximum(`domainmax`) values of a *continuous* variate can really appear in the data or not. Possible values are `true` (or `t` or `yes`) or `false` (or `f`, `no`, or an empty field); upper- or lower-case is irrelevant. Here are some examples about the meaning of these fields. (a) A continuous *unrounded* variate such as temperature has 0 as a minimum possible value `domainmin`, but this value itself is physically impossible and can never appear in data; in this case `minincluded` is empty (or set to `false` or `no`). (b) A variate related to the *unrounded* length, in metres, of some objects may take on any positive real value; but suppose that all objects of length 5 or less are grouped together under the value `5`. It is then possible for several datapoints to have value `5`: one such datapoint could originally have the value 3.782341...; another the value 4.929673..., and so on. In this case `domainmin` is set to `5`, and `minincluded` is set to `true` (or `yes`). Similarly for the maximum value of a variate and `maxincluded`. Note that if `domainmin` is minus-infinity (empty value in the metadata file), then `minincluded` is automatically empty (that is, `false`), and similarly for `maxincluded` if `domainmax` is infinity.
+#' **`minincluded`**, **`maxincluded`**: Whether the minimum (`domainmin`) and maximum(`domainmax`) values of a *continuous* variate can really appear in the data or not. Possible values are `true` (or `t` or `yes`) or `false` (or `f`, `no`, or an empty field); upper- or lower-case is irrelevant. Here are some examples about the meaning of these fields. (a) A *censored* variate has values larger than a given amount all grouped together, and similarly for values smaller than a given amount; for example, the "age" variate in a dataset might group all ages under 18 into a value "18 or less", and all those above 67 into "67 or more". In this case, "18" will go into the `domainmin` field, and `minincluded` must be set to `true`; likewise "67" will go into the `domainmax` field, and `maxincluded` must be set to `true`. (b) A continuous *unrounded* variate such as temperature has 0 as a minimum possible value `domainmin`, but this value itself is physically impossible and can never appear in data; in this case `minincluded` is empty (or set to `false` or `no`). Note that if `domainmin` is minus-infinity (empty value in the metadata file), then `minincluded` is automatically empty (that is, `false`), and similarly for `maxincluded` if `domainmax` is infinity.
 #'
-#' 
+#'
 ## #' @section Necessity of metadata:
 ## #'
 ## #' To be written.
@@ -96,11 +96,10 @@
 #' metadata <- metadatatemplate(data = dataset, file = NULL)
 #' print(metadata)
 #'
-#' @aliases metadata metadatatemplate
-#'
 #' @import stats
 #' @import utils
 #'
+#' @concept data
 #' @export
 metadatatemplate <- function(
     data,
@@ -135,7 +134,7 @@ metadatatemplate <- function(
         data <- read.csv(datafile,
             na.strings = '', stringsAsFactors = FALSE, tryLogical = FALSE)
     }
-    data <- as.data.frame(data)
+    if(!is.data.frame(data)){ data <- as.data.frame(data) }
 
     ## convert factors to strings if necessary
     if(any(sapply(data, is.factor))){
@@ -159,7 +158,7 @@ metadatatemplate <- function(
             ## plotmin = NA,
             ## plotmax = NA
         ),
-        setNames(as.list(rep(NA, 11)), paste0('V', 1:11)),
+        setNames(as.list(rep(x = NA, times = 11)), paste0('V', 1:11)),
             if (addsummary2metadata) {
                 list(datamin = NA,
                     datamax = NA,
@@ -179,8 +178,8 @@ metadatatemplate <- function(
         variatelist <- setdiff(variatelist, excludevrt)
     }
 
-    if(verbose){message('Analyzing', length(variatelist), 'variates for',
-        nrow(data), 'datapoints.') }
+    if(verbose){message('Analysing ', length(variatelist), ' variates for ',
+        nrow(data), ' datapoints.') }
 
     ## Loop over variates (columns) in data frame
     for (name in variatelist) {
@@ -291,7 +290,7 @@ metadatatemplate <- function(
         ##     if(verbose){
         ##         message('  Two different values detected:\n',
         ##             paste0('"', datavalues, '"', collapse=', '))
-        ##         message('  Assuming variate to be BINARY.')
+        ##         message('    => Assuming variate to be BINARY.')
         ##     }
         ##
         ## } else
@@ -315,10 +314,10 @@ metadatatemplate <- function(
             names(datavalues) <- paste0('V', 1:Nvalues)
             ##
             if(verbose){
-                message('  - ', Nvalues, ' different values detected:\n',
-                    paste0('"', datavalues, '"', collapse = ', '))
+                message('  - ', Nvalues, ' different values detected:')
+                message(paste0('"', datavalues, '"', collapse = ', '))
                 message('  which do not seem to refer to an ordered scale.')
-                message('  Assuming variate to be NOMINAL.')
+                message('    => Assuming variate to be NOMINAL.')
             }
 
         } else if (!is.numeric(x)) {
@@ -339,10 +338,10 @@ metadatatemplate <- function(
             names(datavalues) <- paste0('V', 1:Nvalues)
             ##
             if(verbose){
-                message('  - ', Nvalues, ' different non-numeric values detected:\n',
-                    paste0('"', datavalues, '"', collapse = ', '))
+                message('  - ', Nvalues, ' different non-numeric values detected:')
+                message('   ', paste0('"', datavalues, '"', collapse = ', '))
                 message('  which seem to refer to an ordered scale.')
-                message('  Assuming variate to be ORDINAL.')
+                message('    => Assuming variate to be ORDINAL.')
                 message('  Please appropriately reorder its values in metadata file.')
             }
             warninglist <- c(warninglist,
@@ -381,14 +380,14 @@ metadatatemplate <- function(
             ## plotmax <- NA
             ##
             if(verbose){
-                message('  - Only', Nvalues, ' different numeric values detected:\n')
+                message('  - Only ', Nvalues, ' different numeric values detected:')
                 if(jumpquantum == round(jumpquantum)) {
-                    message('from ', domainmin, ' to ', domainmax,
+                    message('    from ', domainmin, ' to ', domainmax,
                         ' in steps of ', jumpquantum)
                 } else {
-                    message(paste0('"', datavalues, '"', collapse = ', '))
+                    message('   ', paste0('"', datavalues, '"', collapse = ', '))
                 }
-                message('  Assuming variate to be ORDINAL.')
+                message('    => Assuming variate to be ORDINAL.')
             }
 
             ## #### This categorization is not used in the present version
@@ -412,7 +411,7 @@ metadatatemplate <- function(
             ##         message(' - ', Nvalues, ' different numeric values detected')
             ##         message('  distance between datapoints is a multiple of integer',
             ##             jumpquantum)
-            ##         message('  Assuming variate to be ORDINAL.')
+            ##         message('    => Assuming variate to be ORDINAL.')
             ##     }
             ##     warninglist <- c(warninglist,
             ##         paste0('* "', name, '" variate',
@@ -452,7 +451,7 @@ metadatatemplate <- function(
             if(verbose){
                 message('  - Numeric values between ',
                     datamin, ' and ', datamax)
-                message('  Assuming variate to be CONTINUOUS.')
+                message('    => Assuming variate to be CONTINUOUS.')
             }
 
             roundedflag <- FALSE
@@ -483,13 +482,13 @@ metadatatemplate <- function(
                 if(verbose){
                     message('  - Distance between datapoints is a multiple of ',
                         jumpquantum)
-                    message('  Assuming variate to be ROUNDED.')
+                    message('    => Assuming variate to be ROUNDED.')
                 }
                 if(jumpquantum >=1) {
                     warninglist <- c(warninglist,
                         paste0('\n* "', name, '" variate',
                             ' appears to be continuous and rounded,',
-                            '\nbut it could also be an ordinal variate'))
+                            '\nbut it could also be an ordinal variate.'))
                 }
                 ## domainmin <- signif(datamin - 4 * rangex, 1)
                 ## domainmax <- signif(datamax + 4 * rangex, 1)
@@ -513,7 +512,7 @@ metadatatemplate <- function(
                 if(verbose){
                     message('  - Several datapoints have minimum value ',
                         datamin)
-                    message('  Assuming "domainmin" to be this minimum observed value')
+                    message('    => Assuming "domainmin" to be this minimum observed value.')
                     if(!roundedflag){
                         message('  and to be included in the domain (singular probabilities there).')
                     }
@@ -528,7 +527,7 @@ metadatatemplate <- function(
                 ##
                 if(verbose){
                     message('  - All values are positive')
-                    message('  Assuming "domainmin" to be 0')
+                    message('    => Assuming "domainmin" to be 0.')
                     if(!roundedflag){
                         message('  with 0 excluded from domain.')
                     }
@@ -543,7 +542,7 @@ metadatatemplate <- function(
                 ##
                 if(verbose){
                     message('  - All values are non-negative')
-                    message('  Assuming "domainmin" to be 0')
+                    message('    => Assuming "domainmin" to be 0.')
                     if(!roundedflag){
                         message('  with 0 included in the domain.')
                     }
@@ -561,7 +560,7 @@ metadatatemplate <- function(
                 if(verbose){
                     message('  - Many datapoints have maximum value ',
                         datamax)
-                    message('  Assuming "domainmax" to be this maximum observed value')
+                    message('    => Assuming "domainmax" to be this maximum observed value.')
                     if(!roundedflag){
                         message('  and to be included in the domain (singular probabilities there).')
                     }

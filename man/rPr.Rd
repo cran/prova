@@ -8,7 +8,7 @@ rPr(
   n,
   Ynames,
   X = NULL,
-  learnt,
+  K = NULL,
   tails = NULL,
   mcsamples = NULL,
   parallel = NULL
@@ -21,9 +21,9 @@ rPr(
 
 \item{X}{List or data.table or \code{NULL}: set of values of variates on which we want to condition the joint probability for \code{Y}. If \code{NULL} (default), no conditioning is made. Any rows beyond the first are discarded}
 
-\item{learnt}{Either a character with the name of a directory or full path for a 'learnt.rds' object, produced by the \code{\link[=learn]{learn()}} function, or such an object itself.}
+\item{K}{A "prova_K" (knowledge) object produced by \code{\link[=learn]{learn()}}. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one.}
 
-\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in an semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
+\item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
 
 \item{mcsamples}{Vector of integers, or \code{'all'}, or \code{NULL} (default): which Monte Carlo samples calculated by the \code{\link[=learn]{learn()}} function should be used to draw the variate values. The default is to choose a random subset if \code{n} is smaller than their number, otherwise to recycle them as necessary.}
 
@@ -33,25 +33,23 @@ rPr(
 A \link[base:data.frame]{data frame} of joint draws of the variates \code{Ynames} from the posterior distribution, conditional on \code{X}. The row names of the data frame report the Monte Carlo sample (from \code{\link[=learn]{learn()}}) used for that draw, and the total number of draws from that sample so far.
 }
 \description{
-This function generates datapoints of chosen joint variates, according to posterior probabilities and posterior conditional probabilities.
+Generates datapoints of chosen joint variates, according to posterior probabilities and posterior conditional probabilities.
 }
 \details{
-This function generates datapoints according to the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data})} or \eqn{\mathrm{Pr}(Y = y \vert X \le x, \text{data})} or combinations thereof, for the variates specified in the argument \code{Y}, and conditional on the variate values specified in the argument \code{X}. It is somewhat analogous to the \code{r}-variants of R distribution functions, such as \code{\link[stats:rnorm]{stats::rnorm()}}. If \code{X} is omitted or \code{NULL}, then the posterior probability \eqn{\mathrm{Pr}(Y | \text{data})} is used. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
+This function generates datapoints according to the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, for the variates specified in the argument \code{Y}, and conditional on the variate values specified in the argument \code{X}. It is somewhat analogous to the \code{rxxx}-variants of \link[stats:Distributions]{R distribution functions}. If \code{X} is omitted or \code{NULL}, then the posterior probability \eqn{\mathrm{Pr}(Y | K)} is used. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
+
+If \code{rPr()} is called with three unnamed arguments, \code{rPr(..., ..., ...)}, then it is interpreted as \code{rPr(n = ..., Ynames = ..., K = ...)}.
 }
 \examples{
-## Load the example `learnt` object calculated from the "penguins" dataset;
+## Use the example "prova_K" (knowledge) object 'Kexample'
+## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
-learnt <- learntExample
 
 ## ## Example 1:
 ## Generate 10 values of the 'species' variate,
 ## according to the frequency distribution estimated from the data
 
-datapoints <- rPr(
-  n = 10,
-  Ynames = 'species',
-  learnt = learnt
-)
+datapoints <- rPr(10, 'species', Kexample)
 
 c(datapoints)
 
@@ -59,11 +57,7 @@ c(datapoints)
 ## ## Example 2:
 ## Generate 5 joint values of the 'species' and 'bill_len' variates.
 
-datapoints <- rPr(
-  n = 5,
-  Ynames = c('species', 'bill_len'),
-  learnt = learnt
-)
+datapoints <- rPr(5, c('species', 'bill_len'), Kexample)
 
 print(datapoints, row.names = FALSE) ## row names give MCMC information
 
@@ -72,21 +66,17 @@ print(datapoints, row.names = FALSE) ## row names give MCMC information
 ## Generate 5 values of the 'species' variate,
 ## for the subpopulation of penguins having bill length shorter than 40 mm
 
-datapoints <- rPr(
-  n = 5,
-  Ynames = 'species',
-  X = data.frame(bill_len = 40),
-  tails = list(bill_len = -1),
-  learnt = learnt
-)
+datapoints <- rPr(5, 'species', data.frame(bill_len = 40), Kexample,
+  tails = list(bill_len = 'lower'))
 
 c(datapoints)
 
 }
 \seealso{
-\code{\link[=learn]{learn()}}, which generates the \code{learnt} objects required by \code{qPr()}.
+\code{\link[=learn]{learn()}}, which generates the "prova_K" (knowledge) objects required by \code{qPr()}.
 
 \code{\link[=Pr]{Pr()}} to calculate joint and conditional probabilities.
 
 \code{\link[=qPr]{qPr()}} to calculate quantiles.
 }
+\concept{generate}

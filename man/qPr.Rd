@@ -5,12 +5,11 @@
 \title{Calculate quantiles}
 \usage{
 qPr(
-  p = c(0.25, 0.5, 0.75),
+  p,
   Yname,
   X = NULL,
-  learnt,
+  K = NULL,
   tails = NULL,
-  priorY = NULL,
   nsamples = "all",
   quantiles = c(0.055, 0.5, 0.945),
   parallel = TRUE,
@@ -22,105 +21,95 @@ qPr(
 )
 }
 \arguments{
-\item{p}{Numeric vector of probability levels. Default: \code{c(0.25, 0.5, 0.75)}.}
+\item{p}{Numeric vector of probability levels.}
 
 \item{Yname}{Character vector: name of variate whose quantiles will be computed.}
 
-\item{X}{Matrix or data.table or \code{NULL} (default): set of values of variates on which we want to condition. If \code{NULL}, no conditioning is made (except for conditioning on the learning dataset and prior assumptions). One variate per column, one set of values per row.}
+\item{X}{Matrix or data.table or \code{NULL} (default): set of values of variates on which we want to condition. If \code{NULL}, no conditioning is made (except for conditioning on the learning dataset and prior assumptions). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.}
 
-\item{learnt}{Either a character with the name of a directory or full path for a 'learnt.rds' object, produced by the \code{\link[=learn]{learn()}} function, or such an object itself.}
+\item{K}{A "prova_K" (knowledge) object produced by \code{\link[=learn]{learn()}}. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one. See "Details" for the interpretation of unnamed arguments.}
 
 \item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
 
-\item{priorY}{Reserved for use in future versions of the package.}
+\item{nsamples}{Integer or \code{NULL} or \code{'all'} (default): desired number of samples of the revisability of the quantile for \code{Y}. If \code{NULL}, no samples are reported. If \code{'all'} (or \code{Inf}), all samples obtained by the \code{\link[=learn]{learn()}} function are used.}
 
-\item{nsamples}{Integer or \code{NULL} or \code{'all'} (default): desired number of samples of the variability of the quantile for \code{Y}. If \code{NULL}, no samples are reported. If \code{'all'} (or \code{Inf}), all samples obtained by the \code{\link[=learn]{learn()}} function are used.}
+\item{quantiles}{Numeric vector, between 0 and 1, or \code{NULL}: desired quantiles of the revisability of the quantile for \code{Y}. Default \code{c(0.055, 0.25, 0.75, 0.945)}, that is, the 5.5\%, 25\%, 75\%, 94.5\% quantiles (these are typical quantile values in the Bayesian literature: they give 50\% and 89\% credibility intervals, which correspond to 1 shannons and 0.5 shannons of uncertainty). If \code{NULL}, no quantiles are calculated.}
 
-\item{quantiles}{Numeric vector, between 0 and 1, or \code{NULL}: desired quantiles of the variability of the quantile for \code{Y}. Default \code{c(0.055, 0.25, 0.75, 0.945)}, that is, the 5.5\%, 25\%, 75\%, 94.5\% quantiles (these are typical quantile values in the Bayesian literature: they give 50\% and 89\% credibility intervals, which correspond to 1 shannons and 0.5 shannons of uncertainty). If \code{NULL}, no quantiles are calculated.}
+\item{parallel}{One of the following values:
+\itemize{
+\item A "cluster" object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}.
+\item Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+\item \code{FALSE}: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+\item \code{TRUE} (default): use the cluster that was set as default with \code{\link[parallel:setDefaultCluster]{parallel::setDefaultCluster()}}; if no such object exists, then generate a cluster with as many nodes as in the \link[base:getOption]{option} "cl.cores"; if this option is unset, then use 2 nodes.
+}}
 
-\item{parallel}{Logical or positive integer or cluster object. \code{TRUE} (default): use roughly half of available cores; \code{FALSE}: use serial computation; integer: use this many cores. It can also be a cluster object previously created with \code{\link[parallel:makeCluster]{parallel::makeCluster()}}; in this case the parallel computation will use this object.}
+\item{sep}{character, default \code{','}: character to separate the output's variate names and values.}
 
-\item{sep}{character, default \code{','}: character to separate variate names and values}
-
-\item{solidus}{character, default \code{'|'}: character prepended to names of the variates in the conditional (typically the \code{X} variates).}
+\item{solidus}{character, default \code{'|'}: character prepended to the output's names of the variates in the conditional (typically the \code{X} variates).}
 
 \item{verbose}{Logical, default \code{FALSE}: give messages about parallel processing?}
 
-\item{keepYX}{Logical, default \code{TRUE}: keep a copy of the \code{Y} and \code{X} arguments in the output? This is used for the plot method.}
+\item{keepYX}{Logical, default \code{TRUE}: keep a copy of the \code{Yname} and \code{X} arguments in the output? This is used for \code{\link[=plot.prova_pr]{plot.prova_pr()}}.}
 
 \item{tol}{numeric positive: tolerance in the calculation of quantiles. Default: \code{.Machine$double.eps * 10} (typically \code{2.22045e-15}).}
 }
 \value{
 A list of the following elements:
 \itemize{
-\item \code{values}: a matrix with the requested \eqn{Y}-quantiles \code{p} conditional on the requested \eqn{X}-values in \code{X}, for all combinations of \code{p} (rows) and \code{X} (columns).
-\item \code{quantiles} (possibly \code{NULL}): an array with the variability quantiles (3rd dimension of the array) for the quantiles of the \code{value} element.
-\item \code{samples} (possibly \code{NULL}): an array with the variability samples (3rd dimension of the array) for such quantiles.
-\item \code{Y}, \code{X}: copies of the \code{Y} and \code{X} arguments.
+\item \code{'value'}: a matrix with the requested \eqn{Y}-quantiles \code{p} conditional on the requested \eqn{X}-values in \code{X}, for all combinations of \code{p} (rows) and \code{X} (columns).
+\item \code{'quantiles'} (possibly \code{NULL}): an array with the revisability quantiles (3rd dimension of the array) for the quantiles of the \code{'value'} element.
+\item \code{'samples'} (possibly \code{NULL}): an array with the revisability samples (3rd dimension of the array) for such quantiles.
+\item \code{'Y'}, \code{'X'} \code{'tails'}: copies of the \code{Y}, \code{X}, \code{tails} arguments.
+\item \code{'K'}: name of the "prova_K" (knowledge) object used in the calculation.
 }
 }
 \description{
-This function calculates the quantiles of posterior probabilities and posterior conditional probabilities. It also outputs the variability of such quantiles if more training data were available.
+Calculate the quantiles of posterior probabilities and posterior conditional probabilities. Output the revisability of such quantiles if more training data were available.
 }
 \details{
-This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data})} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, \text{data})} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the variability of those quantiles if more learning data were provided. It is somewhat analogous to the \code{q}-variants of R distribution functions, such as \code{\link[stats:qnorm]{stats::qnorm()}}. The variability can be expressed in the form of quantiles, samples, or both, as in the \code{\link[=Pr]{Pr()}} function. If several joint values are given for the probability levels and for \code{X}, the function creates a 2D grid of results for all possible combinations of the given probability levels and \code{X} values. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
+This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the revisability of those quantiles if more learning data were provided. It is somewhat analogous to the \code{qxxx}-variants of \link[stats:Distributions]{R distribution functions}. The revisability can be expressed in the form of quantiles, samples, or both, as in the \code{\link[=Pr]{Pr()}} function. If several joint values are given for the probability levels and for \code{X}, the function creates a 2D grid of results for all possible combinations of the given probability levels and \code{X} values. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
+
+If \code{qPr()} is called with three unnamed arguments, \code{qPr(..., ..., ...)}, then it is interpreted as \code{qPr(p = ..., Yname = ..., K = ...)}.
 }
 \examples{
 ### WARNING: the following examples, if run, might even take a minute or more.
 
 \donttest{
-## Load the example `learnt` object calculated from the "penguins" dataset;
+## Use the example "prova_K" (knowledge) object 'Kexample'
+## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
-learnt <- learntExample
 
 ## ## Example 1:
-## Calculate the 5.5\%-, 50\%-, and 94.5\%-quantiles for the variate "bill lengt",
-## that is, the values of "bill length" having such cumulative probabilities
+## Calculate the 25\%-, 50\%-, and 75\%-quantiles for the variate "bill length",
+## that is, the values of "bill length" having such cumulative probabilities:
 
-quants <- qPr(
-  Yname = 'bill_len',
-  learnt = learnt, parallel = 1
-)
+quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', Kexample)
 
 ## display the quantile values
-quants$values
+quants$value
 
-## verify these values using Pr():
-probs <- Pr(
-  Y = data.frame(bill_len = c(quants$values)),
-  tails = list(bill_len = -1),
-  learnt = learnt, parallel = 1
-)
+## verify these values, within numerical error, using Pr():
+probs <- Pr(data.frame(bill_len = c(quants$value)), Kexample,
+  tails = list(bill_len = -1))
+probs$value
 
-## the cumulative probabilities are indeed 0.055, 0.5, 0.945 within numerical error:
-probs$values
-
-## display the variability about the quantiles
+## display the revisability about the quantiles
 quants$quantiles
 
 
 ## ## Example 2:
-## Calculate the 5.5\%-, 50\%-, and 94.5\%-quantiles for the variate "bill lengt",
-## for the subpopulation of species 'Adelie'
-
-quants <- qPr(
-  Yname = 'bill_len',
-  X = data.frame(species = 'Adelie'),
-  learnt = learnt, parallel = 1
-)
+## Calculate the 25\%-, 50\%-, and 75\%-quantiles for the variate "bill length",
+## for the subpopulation of species 'Adelie':
+quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', data.frame(species = 'Adelie'),
+  Kexample)
 
 ## display the quantile values
-quants$values
+quants$value
 
-## verify these values using Pr():
-probs <- Pr(
-  Y = data.frame(bill_len = c(quants$values)),
-  X = data.frame(species = 'Adelie'),
-  tails = list(bill_len = -1),
-  learnt = learnt, parallel = 1)
-
-## the cumulative probabilities are indeed 0.055, 0.5, 0.945 within numerical error:
-probs$values
+## verify these values, within numerical error, using Pr():
+probs <- Pr(data.frame(bill_len = c(quants$value)),
+  data.frame(species = 'Adelie'), Kexample, tails = list(bill_len = -1))
+probs$value
 }
 
 }
@@ -130,9 +119,10 @@ probs$values
 }
 }
 \seealso{
-\code{\link[=learn]{learn()}}, which generates the \code{learnt} objects required by \code{qPr()}.
+\code{\link[=learn]{learn()}}, which generates the "prova_K" (knowledge) objects required by \code{qPr()}.
 
 \code{\link[=Pr]{Pr()}} to calculate joint and conditional probabilities.
 
 \code{\link[=rPr]{rPr()}} to generate datapoints.
 }
+\concept{probability}

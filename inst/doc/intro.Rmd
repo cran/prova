@@ -35,18 +35,20 @@ You're now welcome to open R in your favourite integrated development environmen
 library('prova')
 ```
 
-In our example we shall use data from the `datasets::penguins` dataset, included in R version 4.5.0 and above. We shuffle this dataset to erase any particular ordering of its data, and call the new dataset `penguin` (without the final 's'):
+In our example we shall use data from the datset `datasets::penguins`, included in R version 4.5.0 and above (if you have an older version, continue reading as you'll be able to download this dataset). We shuffle this dataset to erase any particular ordering of its data, and call the new dataset `penguins_shuffled`:
 
 
 ``` r
 set.seed(50) ## replace with your favourite seed number
 
-penguin <- penguins[sample(1:nrow(penguins)), ] ## shuffle
+penguins_shuffled <- datesets::penguins[sample(1:nrow(penguins)), ] ## shuffle
 
-pwrite.csv(penguin, file = 'penguin_data.csv')
+pwrite.csv(penguins_shuffled, file = 'penguins_shuffled.csv')
 ```
 
-The utility function `pwrite.csv()` saves the dataset as a CSV file that respects the [formatting rules required by **Prova**](#format). For your convenience you can also download the shuffled dataset as the CSV file [`penguin_data.csv`](https://github.com/pglpm/prova/raw/main/vignettes/penguin_data.csv). We assume that you now have the `penguin_data.csv` file.
+
+
+The utility function `pwrite.csv()` saves the dataset as a CSV file that respects the [formatting rules required by **Prova**](#format). For your convenience you can also download the shuffled dataset as the CSV file [`penguins_shuffled.csv`](https://github.com/pglpm/prova/raw/main/vignettes/penguins_shuffled.csv). We assume that you now have the file `penguins_shuffled.csv` in your working directory.
 
 \
 
@@ -114,12 +116,12 @@ One important feature of Bayesian inference is that *we don't need to choose bef
 
 Imagine that, a while after the sampling begun, our colleagues start sending the collected sample data to us, a little batch at a time. For the moment we assume that the batches are chosen without any systematic order; in particular, their order is unrelated to the time of sampling. We make this assumption in order to avoid trends, which we'll discuss in another vignette.
 
-We receive the first 10 samples from our sampling survey and store them in the file `penguin_data10.csv`, respecting the [formatting rules required by **Prova**](#format):
+We receive the first 10 samples from our sampling survey and store them in the file `penguins_10.csv`, respecting the [formatting rules required by **Prova**](#format):
 
 
 ``` r
-datafile <- 'penguin_data10.csv'
-pwrite.csv(penguin[1:10, ], datafile) ## write the first 10 samples
+datafile <- 'penguins_10.csv'
+pwrite.csv(penguins_shuffled[1:10, ], datafile) ## write the first 10 samples
 ```
 
 Here they are:
@@ -140,9 +142,9 @@ Here they are:
 
 
 
-If you generated the `penguin` dataset yourself, then your first 10 samples may be different.
+If you generated the `penguins_shuffled` dataset yourself, then your first 10 samples may be different.
 
-Note that in the data above, samples #1 and #6 have one or more missing variates. But incomplete data are not a problem: inferences can still be performed from them, because Bayesian methods and **Prova** automatically perform *imputation* of missing data, and they do so in a principled way (via the marginalization rule of probability theory). We shall see this in a [later section]{#imputation}.
+Note that in the data above, samples #1 and #6 have one or more missing variates. But incomplete data are not a problem: inferences can still be performed from them, because Bayesian methods and **Prova** automatically perform *imputation* of missing data, and they do so in a principled way (via the marginalization rule of probability theory). We shall see this in a [later section](#imputation).
 
 With these datapoints we start our Bayesian nonparametric analysis using **Prova**!
 
@@ -187,11 +189,11 @@ Values (`V1`, `V2`, ...)
 
 Because it performs *nonparametric* inference. In other words, it does not assume the frequency distribution of the variates in the whole population to have any specific class of shapes, such as a Gaussians; nor does it assume any functional relation at all, as instead is the case for, say, linear regression. Bayesian nonparametric population inference and **Prova** try to extrapolate the frequency distribution of the whole population from the sample data provided. We must therefore provide to **Prova** the same general information that we ourselves have about the variates, and about any artificial modifications performed on their values, such as rounding or pooling.
 
-In order to prepare the metadata file we can use **Prova**'s `metadatatemplate()` helper function. This function reads the sample data and prepares a preliminary file containing heuristic *guesses* about the metadata. We must then check and correct this file. The function motivates its guesses and warns about especially uncertain ones. Here is the code to generate a `penguin_metadata.csv` file, and the output and warnings of the helper function:
+In order to prepare the metadata file we can use **Prova**'s `metadatatemplate()` helper function. This function reads the sample data and prepares a preliminary file containing heuristic *guesses* about the metadata. We must then check and correct this file. The function motivates its guesses and warns about especially uncertain ones. Here is the code to generate a `meta_penguins_temp.csv` metadata file, and the output and warnings of the helper function:
 
 
 ``` r
-metadatafile <- 'penguin_metadata.csv'
+metadatafile <- 'meta_penguins_temp.csv'
 
 metadatatemplate(data = datafile, file = metadatafile)
 # Analyzing 8 variates for 10 datapoints.
@@ -254,7 +256,7 @@ metadatatemplate(data = datafile, file = metadatafile)
 # Preferably, transform it back to non-logarithmic scale.
 # =========
 # 
-# Saved proposal metadata file as "penguin_metadata.csv" 
+# Saved proposal metadata file as "meta_penguins_temp.csv" 
 ```
 
 The preliminary metadata file created by `metadatatemplate()` looks like this:
@@ -274,7 +276,7 @@ The preliminary metadata file created by `metadatatemplate()` looks like this:
 
 
 
-If you generated the `penguin` dataset yourself, then you might obtain different guesses. Try to follow the following guidelines for the present example.
+If you generated the `penguins_shuffled` dataset yourself, then you might obtain different guesses. Try to follow the following guidelines for the present example.
 
 We see that `metadatatemplate()` guessed correctly about the `species`, `island`, `sex` variates: they are of `'nominal'` type, and all their possible values are correctly listed. If any of the possible values are missing from the sample, and therefore missing in the preliminary metadata, then we should add them under the  additional **V...** columns. We can sort the nominal values in any order we please.
 
@@ -287,7 +289,7 @@ Also the `sex` variate is correctly guessed: `nominal` type with possible values
 \
 The guesses about the `flipper_len` and `body_mass` variates are not correct, however: these variates are continuous, with a minimal value of `0` and no maximal value. They are rounded to `1` mm and `25` g (this was correctly guessed).
 
-We must open the preliminary metadata file `penguin_metadata.csv` with our favourite editor, and correct and complete the guesses of the helper function. In this case we end up with the following corrected metadata file, also available for download as [`penguin_metadata.csv`](https://github.com/pglpm/prova/raw/main/vignettes/penguin_metadata.csv):
+We must open the preliminary metadata file `meta_penguins_temp.csv` with our favourite editor, and correct and complete the guesses of the helper function. In this case we end up with the following corrected metadata:
 
 
 
@@ -304,12 +306,13 @@ We must open the preliminary metadata file `penguin_metadata.csv` with our favou
 
 
 
+which is included in **Prova** as the data frame `meta_penguins`, which you can directly use in the following analysis.
 
 ## "Learning" and extrapolating from the sample data {#learningfirst}
 
 Now comes the essential part of our analysis: from the sample data and the metadata information,**Prova** will draw inferences about the *whole* population of penguins, including new penguins (from the same population) that we shall observe in the future. Subsequent analyses are based on this main inference. The general theory behind this kind of inference, based on the property of *exchangeability* and related mathematical theorems, is explained in the [references](#references).
 
-This inference is performed by calling the `learn()` function. Its minimal arguments are three: the sample `data`, the `metadata`, and the name `outputdir` of a directory where the inference results should be saved; some additional information will be suffixed to this directory name. We can give a `parallel` argument specifying the number of cores to be used for parallel computation. A `seed` argument can also be given if we want to reproduce the same output in another run; or alternatively we can first call `set.seed()` in the usual R-way, as we did at the beginning of this vignette. (The function `learn()` in any case always saves the current random-seed status in its output directory, in the file `rng_seed.rds`, so it's always possible to recover its initial state.)
+This inference is performed by calling the `learn()` function. Its minimal arguments are three: the sample `data`, the `metadata`, and the name `outputdir` of a directory where the inference results should be saved; some additional information will be suffixed to this directory name. We can give a `parallel` argument specifying the number of cores to be used for parallel computation, or alternatively a "cluster" object previously created with `parallel::makeCluster()`. A `seed` argument can also be given if we want to reproduce the same output in another run; or alternatively we can first call `set.seed()` in the usual R-way, as we did at the beginning of this vignette. (The function `learn()` in any case always saves the current random-seed status in its output directory, in the file `rng_seed.rds`, so it's always possible to recover its initial state.)
 
 This function in fact does Monte Carlo sampling and is computationally expensive. It may take minutes, hours, or days to run, depending on the amount of sample data and the number of variates. In order to speed up its computations, it tries to use any multi-cores capabilities of the machine it runs in, or the number of cores specified in the `parallel` argument (which shouldn't be larger than the number of cores you actually have!).
 
@@ -319,9 +322,9 @@ The output below was obtained from running `learn()` on 4 cores -- *please wait 
 ``` r
 ## set.seed() already called
 
-learnt10 <- learn(
+K10 <- learn(
     data = datafile,
-    metadata = metadatafile,
+    metadata = meta_penguins, # included in 'Prova'
     outputdir = 'penguin_inference',
     parallel = 4 ## how many cores to use for the computation
 )
@@ -375,17 +378,17 @@ learnt10 <- learn(
 ## Closing connections to cores.
 ```
 
-The initial output gives a summary of the sample size, number of variates, saving directory, and other computational details. An "`estimated end time`" line (not appearing in the output above) is updated from time to time with a better estimate of the computation's end time. Once the computation is finished, some final information about the underlying Monte Carlo computation and time and memory use is provided.^[The Monte Carlo expert will notice that the effective sample size is around 3000 or more. The Monte Carlo sampling is designed to stop when 3600 samples have been obtained from 8 chains, each with an effective sample size of at least 450, or equivalently a relative Monte Carlo standard error under 0.047. This is enough, considering that the statistical uncertainty in the results can be tens or hundreds of times larger than this. The desired number of samples and maximal Monte Carlo standard error can be specified with the `nsamples`, `minESS`, and `maxrelMCSE` arguments.] The inference above, with 10 sample data and 8 variates, took around 3 GB and 15 minutes to complete on 4 cores.
+The initial output gives a summary of the sample size, number of variates, saving directory, and other computational details. An "`estimated end time`" line (not appearing in the output above) is updated from time to time with a better estimate of the computation's end time. Once the computation is finished, some final information about the underlying Monte Carlo computation and time and memory use is provided.^[The Monte Carlo expert will notice that the effective sample size is around 3000 or more. The Monte Carlo sampling is designed to stop when 3600 samples have been obtained from 8 chains, each with an effective sample size of at least 450, or equivalently a relative Monte Carlo standard error under 0.047. This is enough, considering that the statistical uncertainty in the results can be tens or hundreds of times larger than this. The desired number of samples and maximal Monte Carlo standard error can be specified with the `nsamples`, `minESS`, and `maxrelMCSE` arguments.] The inference above, with 10 datasamples and 8 variates, took around 3 GB and 15 minutes to complete on 4 cores.
 
-The results of this main inference are now stored in the compressed file `learnt.rds` (around 32 MB) within the specified output directory. The name of this directory is also saved as the final value of the `learn()` function. We saved this directory name in the `learnt10` variable in the code above, by invoking `learnt10 <- learn(...)`.
+The results of this main inference are now stored in the compressed file `K.rds` (around 32 MB) within the specified output directory. The name of this directory is also saved as the final value of the `learn()` function. We saved this directory name in the `K10` variable in the code above, by invoking `K10 <- learn(...)`.
 
-For your convenience the object produced by the computation above can be downloaded as the file [`learnt10.rds`](https://github.com/pglpm/prova/raw/main/vignettes/learnt10.rds). Once you have downloaded it in your working directory you can just invoke
+For your convenience the object produced by the computation above can be downloaded as the file [`K10.rds`](https://github.com/pglpm/prova/raw/main/vignettes/K10.rds). Once you have downloaded it in your working directory you can just invoke
 
 
 ``` r
-learnt10 <- 'learnt10.rds'
+K10 <- 'K10.rds'
 ```
-which produces an object `learnt10` (just a character string, in this case) which can be used in the following analysis.
+which produces an object `K10` (just a character string, in this case) which can be used in the following analysis.
 
 \
 
@@ -400,87 +403,109 @@ Bayesian nonparametrics and **Prova** give a first answer to this question in th
 - an *estimate* of the whole-population frequency distribution,
 - the *uncertainty* of this estimate.
 
-We discuss both in a moment. First let's compute them using the `Pr()` function. For the present question, this function requires three arguments:
+We discuss both in a moment. First let's compute them using the `Pr()` function. For the present question, this function requires two arguments:
 
 - `Y`: a `data.frame` listing the values of the variate we are interested in. In the present case the variate is `species` and the values are 'Adelie', 'Chinstrap', 'Gentoo'.
-- `learnt`: the object that points to the computation made with the `learn()` function, discussed in the previous section. In the present case it's `learnt10`.
-- Optionally, `parallel` specifies how many cores we should use for the computation.
+- `K`: the object that encodes the `K`nowledge from the computation made with the `learn()` function, discussed in the previous section. In the present case it's `K10`.
 
-Here is a way to call the function; the computation should take at most a couple of seconds:
+*Optionally*, a `parallel =` argument can also be given. This argument specifies how many nodes we should use for the computation, or a cluster previously generated with `parallel::makeCluster()`. If this argument is missing, then the function checks whether a default cluster (set with `parallel::setDefaultCluster()`) exists, and if it doesn't then it creates a number of nodes equal to the R option "cl.cores" (see `options()`), or equal to 2, if that option is unset. In the present example we tell **Prova** that it can use up to 4 nodes; change this value to one that works for your system -- or just skip this step if you don't want to bother with parallel computation for the moment:
+
+
+``` r
+options(cl.cores = 4) # use up to 4 nodes
+```
+
+Back to our function `Pr()`: here is a way to call the function; the computation should take at most a couple of seconds:
 
 
 ``` r
 ## data frame with the variate and values we want to know the frequencies of
 Y <- data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo'))
 
-Fspecies10 <- Pr(
-    Y = Y,
-    learnt = learnt10,
-    parallel = 4 ## let's use 4 cores
-)
+Fspecies10 <- Pr(Y, K10)
 ```
+
+This could also be entered more explicitly as `Fspecies10 <- Pr(Y = Y, K = K10)`.
+
 
 The answer to our question is now contained in the `Fspecies10` object (we chose this name for "`F`requency distribution of `species`, estimated from `10` samples"). The estimate and its uncertainty can be immediately visualized by calling `plot()` with this object:
 
 
 ``` r
-plot(Fspecies10)
+plot(Fspecies10, col = 8)
 ```
 
 <div class="figure">
-<img src="figure/vis10-1.jpeg" alt="**Estimates and uncertainty of relative frequencies of penguin species**" width="100%" />
+<img src="figure/vis10-1.svg" alt="**Estimates and uncertainty of relative frequencies of penguin species**" width="100%" />
 <p class="caption">**Estimates and uncertainty of relative frequencies of penguin species**</p>
 </div>
 \
 
 The x-axis of this plot shows the three possible values of the `species` variate. The y-axis reports fractions which may be read as *frequencies* or *probabilities*.
 
-The estimated frequency distribution for the species is the central, solid red curve with small circles. (You may be used to frequency distributions as histograms, rather than as a broken line like in the plot above. The present visualization is more advantageous when we want to compare several frequency distributions, as we'll do later.)
+For the moment, disregard the grey bands, which we discuss later. The estimated frequency distribution for the species is the central, solid black curve with small circles. (You may be used to frequency distributions as histograms, rather than as a broken line like in the plot above. The present visualization is more advantageous when we want to compare several frequency distributions, as we'll do later.)
 
 The three estimated frequencies are:
 
-- Adélie: 0.30
-- Chinstrap: 0.30
+- Adélie: 0.29
+- Chinstrap: 0.31
 - Gentoo: 0.40
 
-and can be read from the `values` element of the `Fspecies10` object, either directly or by using the `print()` function, which by default a number of significant digits corresponding to the Monte Carlo numerical error:
+and can be read from the `value` element of the `Fspecies10` object, either directly or by using the `print()` function, which by default a number of significant digits corresponding to the Monte Carlo numerical accuracy:
 
 
 ``` r
-Fspecies10$values
+Fspecies10$value
 #            
 # species         [,1]
-#   Adelie    0.298718
-#   Chinstrap 0.304615
-#   Gentoo    0.396668
+#   Adelie    0.294191
+#   Chinstrap 0.307519
+#   Gentoo    0.398291
 
 ## or
-print(Fspecies10, 'values')
-# $values
+print(Fspecies10, 'value')
+# $value
 #            
-# species      [,1]
-#   Adelie    0.299
-#   Chinstrap 0.305
-#   Gentoo    0.397
+# species     [,1]
+#   Adelie    0.29
+#   Chinstrap 0.31
+#   Gentoo    0.40
 ```
 
 These frequency estimates have also another important meaning: they are the *probabilities for the species of the **next** penguin we'll observe*. More generally, they are the probabilities for the next observation. In the present context they are maybe not so relevant -- unless you're placing bets on which data will arrive next with your colleagues -- but in other inference contexts they may be very important. In a clinical setting, for example, where we try to infer some condition about the next patient, these probabilities are used for clinical decision-making; see the textbooks by Sox & al. and by Hunink & al., and the paper by Lindley & Novick in the [references]{#referencesmedical}.
 
 For the moment we focus on the "frequency estimate" meaning.
 
-What about the uncertainty of these estimates?
+What about the *uncertainty* of these estimates?
 
-## Uncertainty of estimates: credibility intervals and probabilities
+## Uncertainty of estimates: credibility intervals
 
-In Bayesian theory, a compact way of expressing the uncertainty in a quantity is by means of a **credibility interval** with a given probability. For instance, if we say that a particular quantity has a 70%-credibility interval equal to $(0.41, 0.69)$, what we mean is that there's an 70% probability that the true value of that quantity is between $0.41$ and $0.69$ -- pretty straightforward! *Please be careful not to confuse the Bayesian credibility interval with a "confidence interval"*: the latter has a much more involved and less straightforward meaning.
+In Bayesian theory, a compact way of expressing the uncertainty in a quantity is by means of a **credibility interval** (also called *coverage interval*, see JCGM 2012) having a given probability. For instance, if we say that a particular quantity has a 70%-credibility interval equal to $(0.41, 0.69)$, what we mean is that there's a 70% probability that the true value of that quantity is between $0.41$ and $0.69$ -- quite straightforward! *Please be careful not to confuse the Bayesian credibility interval with a "confidence interval"*: the latter has a much more involved and less straightforward meaning.
 
-The `Pr()` function by default calculates two credibility intervals for each frequency estimate: a 50% one, and an 89% one (why? see [references]{#referencesbayes} for an explanation). In our present inference, the 50%-credibility intervals are shown in the plot above as the darker grey band, and the 89%-credibility intervals as the lighter grey band. These intervals contain the 50% ones.
+The `Pr()` function by default calculates two credibility intervals for each frequency estimate: a 50% one, and an 89% one (why? see [references]{#referencesbayes} for an explanation). In our present inference, the 50%-credibility intervals are shown in the plot above as the darker grey band, and the 89%-credibility intervals as the lighter grey band; these latter intervals contain the 50% ones.
 
-For instance, the plot indicates that there's a 50% probability that the relative frequency of all `Adelie` penguins is roughly between 0.21 and 0.38; and an 89% probability that their relative frequency is roughly between 0.12 and 0.51.
+For instance, the plot indicates that there's a 50% probability that the relative frequency of all `Adelie` penguins is roughly between 0.20 and 0.37; and an 89% probability that their relative frequency is roughly between 0.12 and 0.51.
 
-For the `Gentoo` species, there's a 50% probability that its relative frequency is roughly between 0.30 and 0.49; and an 89% probability that their relative frequency is roughly between 0.19 and 0.62.
+For the `Gentoo` species, there's a 50% probability that its relative frequency is roughly between 0.30 and 0.49; and an 89% probability that their relative frequency is roughly between 0.19 and 0.63.
 
-We can Actually do more: we can plot the probabilities of all possible frequencies. To understand this idea, let's ask: what is the relative frequency of Adélie penguins in the whole population? Possible values could be anything between 0 and 1. But some of these values may be more probable than others. If we look at our 10 samples, we see that 3 out of 10 are `Adelie`. So a relative frequency around 0.3 is a little more probable, although there's still a lot of uncertainty because this is just a small sample.
+A different way of visualizing the uncertainty about the long-run frequency distribution is by displaying an ensemble of *probable alternatives* of the distribution. This visualization can be obtained with the argument `spread = 'samples'` in the `plot()` function. Let's compare the two visualizations, by quantile bands and by ensemble:
+
+
+``` r
+plot(Fspecies10, col = 8)
+plot(Fspecies10, col = 8, spread = 'samples')
+```
+
+<div class="figure">
+<img src="figure/vis10bis-1.svg" alt="**Uncertainty of relative frequencies displayed as quantile bands and samples**" width="75%" /><img src="figure/vis10bis-2.svg" alt="**Uncertainty of relative frequencies displayed as quantile bands and samples**" width="75%" />
+<p class="caption">**Uncertainty of relative frequencies displayed as quantile bands and samples**</p>
+</div>
+
+The visualization by quantile bands often looks neater; but keep in mind that it leaves out important details, such as the presence of probable peaks; such details are instead shown by the ensemble visualization. For example in the ensemble plot above we see that the long-run frequency distribution is likely to have a maximum at the Chinstrap species (∧-shaped lines), or a mininum at the Chinstrap species (∨-shaped lines), and less likely to have a maximum or minimum at the other two species (which would appear as /-shaped or \\-shaped lines). This aspect is not visible in the quantile-band plot. It is recommended to always take a look at both kinds of visualization. In the following we shall use only quantile bands for simplicity, but feel free to call all following `plot()`s also with the `spread = 'samples'` argument.
+
+\
+
+**Prova** makes also available a finer visualization of the uncertainty about the long-run frequencies. We can plot the probabilities of all possible such frequencies. To understand this idea, let's ask: what is the relative frequency of Adélie penguins in the whole population? Possible values could be anything between 0 and 1. But some of these values may be more probable than others. If we look at our 10 samples, we see that 3 out of 10 are `Adelie`. So a relative frequency around 0.3 is a little more probable, although there's still a lot of uncertainty because this is just a small sample.
 
 The `Pr()` function has actually calculated the probabilities for all possible frequencies of each species. We can plot the probabilities of the frequencies of the `Adelie` species only, as follows:
 
@@ -489,11 +514,11 @@ The `Pr()` function has actually calculated the probabilities for all possible f
 ## select only Adelie by means of argument 'subset ='
 hist(Fspecies10,
     subset = list(species = 'Adelie'),
-    xlim = c(0, 1), legend = 'topright', col = 2)
+    xlim = c(0, 1), legend = 'topright', col = 1)
 ```
 
 <div class="figure">
-<img src="figure/hist10adelie-1.jpeg" alt="**Probability distribution for the frequency of Adelie penguins**" width="100%" />
+<img src="figure/hist10adelie-1.svg" alt="**Probability distribution for the frequency of Adelie penguins**" width="100%" />
 <p class="caption">**Probability distribution for the frequency of Adelie penguins**</p>
 </div>
 \
@@ -510,9 +535,9 @@ The credibility intervals are calculated from the probability distribution above
 Fspecies10$quantiles[, , c('5.5%', '94.5%')]
 #            Q
 # species         5.5%    94.5%
-#   Adelie    0.121767 0.506820
-#   Chinstrap 0.122984 0.522063
-#   Gentoo    0.192130 0.618288
+#   Adelie    0.120212 0.509337
+#   Chinstrap 0.131320 0.525783
+#   Gentoo    0.188954 0.629379
 ```
 
 or we can use the `print()` function to display values and quantiles together:
@@ -520,68 +545,16 @@ or we can use the `print()` function to display values and quantiles together:
 
 ``` r
 print(Fspecies10)
-#            prob. & vrb.
-# species     value Q5.5%  Q25%  Q75% Q94.5%
-#   Adelie    0.299 0.122 0.207 0.376  0.507
-#   Chinstrap 0.305 0.123 0.211 0.389  0.522
-#   Gentoo    0.397 0.192 0.300 0.489  0.618
+#            probability
+# species     value  +/-    Q5.5%  Q25%   Q75%   Q94.5%
+#   Adelie    0.2942 0.0019 0.1202 0.2027 0.3729 0.5093
+#   Chinstrap 0.3075 0.0021 0.1313 0.2157 0.3876 0.5258
+#   Gentoo    0.3983 0.0024 0.1890 0.2981 0.4873 0.6294
 ```
 
 <!-- As the name tells, this element actually report the *quantiles* of the probability. For example, look at the `= 25%` output: among other things it says `Adelie 0.227634`. This means that there's a 25% probability that the frequency of Adélie penguins is below $0.227634$, and thus a 75% probability that it's above $0.227634$.
  -->
 
-## Imputation of missing data {#imputation}
-
-In our initial dataset, datapoint #1 lacks the value of the `sex` variate, and datapoint #6 lacks the values of variates `bill_len`, `bill_dep`, `flipper_len`, `body_mass`. These partial information of these two datapoints was nevertheless used to learn about the full population. We can probabilistically infer, that is, do imputation, of all these missing data.
-
-Let's take datapoint #1 for instance, and infer its missing variate `sex` from all other, known, variates:
-
-
-``` r
-Yimp <- data.frame(sex = c('female', 'male'))
-
-## Extract data from datapoint #1 of our shuffled dataset 'penguin'
-## excluding 'sex' variate
-X <- penguin[1, colnames(penguin) != 'sex']
-
-imputeddata <- Pr(Y = Yimp, X = X, learnt = learnt10, parallel = 4)
-
-print(imputeddata)
-# , , |species,island,bill_len,bill_dep,flipper_len,body_mass,year = Adelie,Torgersen,37.8,17.1,186,3300,2007
-# 
-#         prob. & vrb.
-# sex      value Q5.5%  Q25%  Q75% Q94.5%
-#   female 0.674 0.240 0.516 0.872 0.9735
-#   male   0.326 0.027 0.128 0.484 0.7610
-```
-
-We see that penguin #1 might have been female with probability 0.67, although further data might shift that probability somewhere between 0.24 and 0.97.
-
-Now let's take datapoint #6 and infer the value of `bill_len`. We can use the function `vrtgrid()` to generate a grid of realistic values based on the data, and then see the probability distribution over these values:
-
-
-``` r
-## Generate grid of realistic values for 'bill_len' using vrtgrid()
-Yimp <- data.frame(bill_len = vrtgrid(vrt = 'bill_len', learnt = learnt10))
-
-## Extract data from datapoint #6 of our shuffled dataset 'penguin'
-X <- penguin[6, ]
-
-## drop unknown variates
-X <- X[, !is.na(X)]
-
-imputeddata <- Pr(Y = Yimp, X = X, learnt = learnt10, parallel = 4)
-
-plot(imputeddata)
-```
-
-<img src="figure/imputation6-1.jpeg" alt="" width="100%" />
-
-<!-- The bill length of penguin #6 can be estimated with a median of around 47.00. -->
-
-\
-
-# Analysis example: frequencies on different islands  {#prelimQ2}
 
 ## A preliminary report on question Q1
 
@@ -595,20 +568,20 @@ A summary answer could be as follows:
 > : rel. frequency between 0.12 and 0.51, with 89% probability.
 > 
 > Chinstrap
-> : rel. frequency between 0.12 and 0.52, with 89% probability.
+> : rel. frequency between 0.13 and 0.53, with 89% probability.
 > 
 > Gentoo
-> : rel. frequency between 0.19 and 0.62, with 89% probability.
+> : rel. frequency between 0.19 and 0.63, with 89% probability.
 
 But we can also give a fuller answer by displaying the probability distributions for all three frequencies:
 
 
 ``` r
-hist(Fspecies10, legend = 'topright', col = 2:4)
+hist(Fspecies10, legend = 'topright', col = 1:3)
 ```
 
 <div class="figure">
-<img src="figure/hist10-1.jpeg" alt="**Probability distribution for the rel. requencies of penguin species**" width="100%" />
+<img src="figure/hist10-1.svg" alt="**Probability distribution for the rel. requencies of penguin species**" width="100%" />
 <p class="caption">**Probability distribution for the rel. requencies of penguin species**</p>
 </div>
 \
@@ -631,23 +604,19 @@ Y2 <- expand.grid(
     stringsAsFactors = FALSE ## important! Prova doesn't use factors
 )
 
-Fspeciessex10 <- Pr(
-    Y = Y2,
-    learnt = learnt10,
-    parallel = 4 ## let's use 4 cores
-)
+Fspeciessex10 <- Pr(Y2, K10)
 
 ## Display the estimated frequencies of all six combinations,
 ## as well as their credibility intervals
 print(Fspeciessex10)
-#                   prob. & vrb.
-# species,sex        value  Q5.5%   Q25%  Q75% Q94.5%
-#   Adelie,female    0.163 0.0508 0.0984 0.215  0.319
-#   Chinstrap,female 0.129 0.0340 0.0728 0.171  0.272
-#   Gentoo,female    0.288 0.1240 0.1990 0.366  0.495
-#   Adelie,male      0.135 0.0380 0.0754 0.179  0.280
-#   Chinstrap,male   0.175 0.0556 0.1050 0.229  0.351
-#   Gentoo,male      0.109 0.0216 0.0530 0.146  0.247
+#                   probability
+# species,sex        value  +/-    Q5.5%   Q25%   Q75%   Q94.5%
+#   Adelie,female    0.1636 0.0016 0.0503  0.0961 0.2151 0.3269
+#   Chinstrap,female 0.1333 0.0013 0.0380  0.0768 0.1730 0.2762
+#   Gentoo,female    0.2912 0.0019 0.1191  0.1994 0.3668 0.5090
+#   Adelie,male      0.1306 0.0012 0.03691 0.0736 0.1716 0.2737
+#   Chinstrap,male   0.1742 0.0015 0.0579  0.1057 0.2262 0.3401
+#   Gentoo,male      0.1071 0.0013 0.02344 0.0549 0.1424 0.2401
 ```
 
 Now let's continue with our simpler plan.
@@ -671,47 +640,44 @@ Bayesian nonparametrics and **Prova** can also draw this kind of inferences. We 
 ## data frame with the variate and values of the subpopulations of interest
 X <- data.frame(island = c('Biscoe', 'Dream'))
 
-Fspecies10I <- Pr(
-    Y = Y,
-    X = X, ## argument for conditional inferences
-    learnt = learnt10,
-    parallel = 4 ## let's use 4 cores
-)
+## The second argument now denote the conditional
+Fspecies10I <- Pr(Y, X, K10)
 ```
+This could also be entered more explicitly as `Fspecies10I <- Pr(Y = Y, X = X, K = K10)`.
 
 The answer to our question is now contained in the `Fspecies10I` object (we add `I` for "island" to the previous name). The estimates of the frequencies and their uncertainties can again be visualized by calling `plot()`:
 
 
 ``` r
-plot(Fspecies10I, col = 5:6)
+plot(Fspecies10I, col = 4:5)
 ```
 
 <div class="figure">
-<img src="figure/vis10I-1.jpeg" alt="**Estimates and uncertainty of conditional frequencies**" width="100%" />
+<img src="figure/vis10I-1.svg" alt="**Estimates and uncertainty of conditional frequencies**" width="100%" />
 <p class="caption">**Estimates and uncertainty of conditional frequencies**</p>
 </div>
 \
 
-The estimated frequencies for the `Biscoe` subpopulation are shown by the solid yellow curve with small circles; those for the `Dream` subpopulation by the dashed purple curve with small squares. More precise values are contained in the `values` element of the `Fspecies10I` object:
+The estimated frequencies for the `Biscoe` subpopulation are shown by the solid yellow curve with small circles; those for the `Dream` subpopulation by the dashed light-blue curve with small squares. More precise values are contained in the `values` element of the `Fspecies10I` object:
 
 
 ``` r
 print(Fspecies10I)
 # , , |island = Biscoe
 # 
-#            prob. & vrb.
-# species     value Q5.5%   Q25%  Q75% Q94.5%
-#   Adelie    0.145 0.015 0.0526 0.207 0.3800
-#   Chinstrap 0.137 0.012 0.0476 0.193 0.3780
-#   Gentoo    0.718 0.419 0.6090 0.853 0.9409
+#            probability
+# species     value  +/-    Q5.5%   Q25%   Q75%   Q94.5%
+#   Adelie    0.1458 0.0020 0.01493 0.0545 0.2027 0.3797
+#   Chinstrap 0.1389 0.0019 0.01285 0.0489 0.1965 0.3611
+#   Gentoo    0.7153 0.0027 0.4088  0.6025 0.8468 0.9401
 # 
 # , , |island = Dream
 # 
-#            prob. & vrb.
-# species     value Q5.5%  Q25%  Q75% Q94.5%
-#   Adelie    0.358 0.100 0.228 0.477  0.657
-#   Chinstrap 0.475 0.186 0.338 0.607  0.774
-#   Gentoo    0.167 0.019 0.068 0.237  0.417
+#            probability
+# species     value  +/-    Q5.5%  Q25%   Q75%   Q94.5%
+#   Adelie    0.3534 0.0026 0.1085 0.2208 0.4696 0.6426
+#   Chinstrap 0.4798 0.0027 0.1973 0.3454 0.6046 0.7778
+#   Gentoo    0.1668 0.0023 0.0174 0.0654 0.2393 0.4172
 ```
 
 According to these estimates, on Biscoe there should be a predominance of Gentoo penguins, with lower, roughly equal numbers of Adélie and Chinstrap. On Dream, on the other hand, Gentoo should be the minority, and Chinstrap should be the majority. But how sure are we about these estimates? We see that the 89%-credibility intervals of each frequency are quite wide. Also in this case we can get a better picture by displaying the probability distribution of each frequency, by means of the `hist()` function, and see how much they overlap.
@@ -722,11 +688,11 @@ For Biscoe island we find
 ``` r
 ## select only Biscoe
 hist(Fspecies10I, subset = list(island = 'Biscoe'),
-    xlim = c(0, 1), legend = 'topright', col = 2:4)
+    xlim = c(0, 1), legend = 'topright', col = 1:3)
 ```
 
 <div class="figure">
-<img src="figure/hist10biscoe-1.jpeg" alt="**Probability distribution for species frequencies on Biscoe**" width="100%" />
+<img src="figure/hist10biscoe-1.svg" alt="**Probability distribution for species frequencies on Biscoe**" width="100%" />
 <p class="caption">**Probability distribution for species frequencies on Biscoe**</p>
 </div>
 
@@ -741,16 +707,16 @@ For Dream island we find
 ``` r
 ## select only Dream
 hist(Fspecies10I, subset = list(island = 'Dream'),
-    xlim = c(0, 1), legend = 'topright', col = 2:4)
+    xlim = c(0, 1), legend = 'topright', col = 1:3)
 ```
 
 <div class="figure">
-<img src="figure/hist10dream-1.jpeg" alt="**Probability distribution for species frequencies on Biscoe**" width="100%" />
+<img src="figure/hist10dream-1.svg" alt="**Probability distribution for species frequencies on Biscoe**" width="100%" />
 <p class="caption">**Probability distribution for species frequencies on Biscoe**</p>
 </div>
 \
 
-Among other things we see here a larger difference in the estimated frequencies of Adélie, around 0.36, and Chinstrap, around 0.47. Still, the probability distributions are wide.
+Among other things we see here a larger difference in the estimated frequencies of Adélie, around 0.35, and Chinstrap, around 0.48. Still, the probability distributions are wide.
 
 **For later, keep in mind the following question: *On Dream, are the frequencies of Adélie and Chinstrap different?*** The present estimates show a difference, but with large uncertainty. Will more sampling data confirm "difference"?
 
@@ -766,19 +732,19 @@ A more compact summary can again be given with credibility intervals. We can pro
 print(Fspecies10I)
 # , , |island = Biscoe
 # 
-#            prob. & vrb.
-# species     value Q5.5%   Q25%  Q75% Q94.5%
-#   Adelie    0.145 0.015 0.0526 0.207 0.3800
-#   Chinstrap 0.137 0.012 0.0476 0.193 0.3780
-#   Gentoo    0.718 0.419 0.6090 0.853 0.9409
+#            probability
+# species     value  +/-    Q5.5%   Q25%   Q75%   Q94.5%
+#   Adelie    0.1458 0.0020 0.01493 0.0545 0.2027 0.3797
+#   Chinstrap 0.1389 0.0019 0.01285 0.0489 0.1965 0.3611
+#   Gentoo    0.7153 0.0027 0.4088  0.6025 0.8468 0.9401
 # 
 # , , |island = Dream
 # 
-#            prob. & vrb.
-# species     value Q5.5%  Q25%  Q75% Q94.5%
-#   Adelie    0.358 0.100 0.228 0.477  0.657
-#   Chinstrap 0.475 0.186 0.338 0.607  0.774
-#   Gentoo    0.167 0.019 0.068 0.237  0.417
+#            probability
+# species     value  +/-    Q5.5%  Q25%   Q75%   Q94.5%
+#   Adelie    0.3534 0.0026 0.1085 0.2208 0.4696 0.6426
+#   Chinstrap 0.4798 0.0027 0.1973 0.3454 0.6046 0.7778
+#   Gentoo    0.1668 0.0023 0.0174 0.0654 0.2393 0.4172
 ```
 
 ## Differences from "null-hypothesis testing" and *p*-value methods {#nht}
@@ -806,34 +772,89 @@ Also in this case we only show the example code for the moment:
 ``` r
 ## data frame with all combination of values from 'island' and 'sex'
 ## use base-R function 'expand.grid()'
-X2 <- expand.grid(
+Xdouble <- expand.grid(
     island = c('Biscoe', 'Dream', 'Torgersen'),
     sex = c('female', 'male'),
     stringsAsFactors = FALSE ## important! Prova doesn't use factors
 )
 
-Fspecies10IS <- Pr(
-    Y = Y,
-    X = X2,
-    learnt = learnt10,
-    parallel = 4 ## let's use 4 cores
-)
+Fspecies10IS <- Pr(Y, Xdouble, K10)
 
 ## Display the estimated frequencies of species
 ## within all six combinations of subpopulations
-print(Fspecies10IS, 'values')
-# $values
+print(Fspecies10IS, 'value')
+# $value
 #            |island,sex
-# species     Biscoe,female Dream,female Torgersen,female Biscoe,male
-#   Adelie            0.128        0.399            0.483       0.211
-#   Chinstrap         0.111        0.395            0.266       0.221
-#   Gentoo            0.761        0.205            0.251       0.569
+# species     Biscoe,female Dream,female Torgersen,female Biscoe,male Dream,male
+#   Adelie             0.13         0.39             0.48        0.21       0.32
+#   Chinstrap          0.11         0.40             0.27        0.22       0.55
+#   Gentoo             0.76         0.21             0.25        0.57       0.14
 #            |island,sex
-# species     Dream,male Torgersen,male
-#   Adelie         0.322          0.450
-#   Chinstrap      0.542          0.376
-#   Gentoo         0.137          0.175
+# species     Torgersen,male
+#   Adelie              0.44
+#   Chinstrap           0.38
+#   Gentoo              0.17
 ```
+
+## Imputation of missing data {#imputation}
+
+In our dataset, datapoint #1 lacks the value of the `sex` variate, and datapoint #6 lacks the values of variates `bill_len`, `bill_dep`, `flipper_len`, `body_mass`. The partial information in these two datapoints was nevertheless still used by the function `learn()`: the datapoints were not discarded.
+
+**Prova** allows you to infer all these missing data; that is, it allows you to do data imputation; and this is done in a *principled* way.
+
+Let's take datapoint #1 for instance, and infer its missing variate `sex` from all other, known, variates:
+
+
+``` r
+## values we want to guess or impute:
+Y1imp <- data.frame(sex = c('female', 'male'))
+
+## Extract data from datapoint #1 of our dataset 'penguins_shuffled'
+## excluding 'sex' variate
+X1 <- penguins_shuffled[1, colnames(penguins_shuffled) != 'sex']
+print(X1)
+#   species    island bill_len bill_dep flipper_len body_mass year
+# 1  Adelie Torgersen     37.8     17.1         186      3300 2007
+
+imputeddata <- Pr(Y1imp, X1, K10)
+
+print(imputeddata)
+# , , |species,island,bill_len,bill_dep,flipper_len,body_mass,year = Adelie,Torgersen,37.8,17.1,186,3300,2007
+# 
+#         probability
+# sex      value  +/-    Q5.5%  Q25%   Q75%   Q94.5%
+#   female 0.6775 0.0041 0.2476 0.5150 0.8668 0.9737
+#   male   0.3225 0.0041 0.0263 0.1332 0.4850 0.7524
+```
+
+We see that penguin #1 might have been female with probability 0.68, although further data might shift that probability somewhere between 0.25 and 0.97.
+
+Now let's take datapoint #6 and infer the value of `bill_len`. We can use the function `vrtgrid()` to generate a grid of realistic values based on the data, and then see the probability distribution over these values:
+
+
+``` r
+## Generate grid of realistic values for 'bill_len' using vrtgrid()
+Y6imp <- vrtgrid('bill_len', K10)
+
+## Extract data from datapoint #6 of our dataset 'penguins_shuffled'
+X6 <- penguins_shuffled[6, ]
+
+## drop unknown variates
+X6 <- X6[, !is.na(X6)]
+print(X6)
+#   species island year
+# 6  Gentoo Biscoe 2009
+
+imputeddata <- Pr(Y6imp, X6, K10)
+
+plot(imputeddata, col = 8, legend = 'topleft')
+```
+
+<img src="figure/imputation6-1.svg" alt="" width="100%" />
+
+<!-- commented
+The bill length of penguin #6 can be estimated with a median of around 46.80.
+commented -->
 
 
 \
@@ -844,12 +865,12 @@ print(Fspecies10IS, 'values')
 
 The preliminary analysis based on only 10 samples of penguins revealed possible interesting hypotheses, for instance that the relative frequencies of Adélie and Chinstrap penguins are both around 0.2 on Biscoe island, and differ by 10% or more apart on Dream island. But the analysis and hypotheses had very large uncertainties.
 
-Now imagine that our sampling colleagues send us 50 more datapoints, which we add to the 10 we already have. Let's store the 60 datapoints in the file `penguin_data60.csv`:
+Now imagine that our sampling colleagues send us 50 more datapoints, which we add to the 10 we already have. Let's store the 60 datapoints in the file `penguins_60.csv`:
 
 
 ``` r
-datafile <- 'penguin_data60.csv'
-pwrite.csv(penguin[1:60, ], datafile) ## write the first 60 samples
+datafile <- 'penguins_60.csv'
+pwrite.csv(penguins_shuffled[1:60, ], datafile) ## write the first 60 samples
 ```
 
 Feel free to take a look at your extended sample data. There may be new datapoints with missing values, but as already discussed this isn't a problem for Bayesian theory and **Prova**.
@@ -858,70 +879,23 @@ Let's now update our inferences with the new sampled data. This is done again wi
 
 
 ``` r
-learnt60 <- learn(
+K60 <- learn(
     data = datafile,
-    metadata = metadatafile,
+    metadata = meta_penguins,
     outputdir = 'penguin_inference',
-    parallel = 4 ## how many cores to use for the computation
+    parallel = 4 ## how many nodes to use for the computation
 )
 
-## Registered socket cluster with 4 nodes on host ‘localhost’.
-## 
-## Learning from 60 datapoints, 8 variates.
-## 
-##  Saving output in directory
-##  __penguin_inference_60-V8_D60_S3600_260621T120619 
-## 
-## Starting Monte Carlo sampling of 3600 samples by 8 chains
-## in a space of 1023 (effectively 16706) dimensions.
-## Using 4 cores: 450 samples per chain, max 2 chains per core.
-## Requested:   ESS 450   rel.MCSE 0.047.
-## Core logs are being saved in individual files.
-## C-compiling samplers appropriate to the variates (Nimble v1.4.2)
-## this can take tens of minutes. Please wait...
-## Compiled core 1. Number of samplers: 1328.             
-## Estimating remaining time, please be patient...
-## Core 4 finished.                                        
-## Core 1 finished.                                        
-## Core 2 finished.                                        
-## Core 3 finished.                                        
-## Finished Monte Carlo sampling.
-## Highest number of Monte Carlo iterations across chains: 39600.
-## Highest number of used mixture components: 7.
-## 
-## Checking test data
-## (#3 #8 #11 #16 #18 #27 #31 #46 #48 #50 #52 #57):
-## rel. CI error: 0.0333 to 0.0975
-## ESS: 2920 to 3690
-## needed thinning: 3.98 to 34.2
-## average: 3.29e-09 to 1.51e-07
-## quantile width: 4.27e-09 to 3.13e-07
-## 
-## Plotting final Monte Carlo traces and marginal samples...
-## 
-## Total computation time: 12 mins
-## Average preparation & finalization time: 2.5 mins.
-## Average Monte Carlo time per chain: 3.1 mins.
-## Max total memory used: approx 3300MB.
-## Max memory used per core: approx 850MB.
-## Removing temporary output files.
-## Finished.
-## 
-## *************************************************
-##  Output saved in directory
-## __penguin_inference_60-V8_D60_S3600_260621T120619
-## *************************************************
-## 
-## Closing connections to cores.
+## [Output omitted]
 ```
 
-The calculation with 60 sample data took around 3 GB and 10 minutes on 4 cores.
+The calculation with 60 datasamples took around 3 GB and 10 minutes on 4 cores.
 
-The results of this updated inference are now stored in the compressed file `learnt.rds` within the new output directory. For your convenience the object produced by the computation above can be downloaded as the file [`learnt60.rds`](https://github.com/pglpm/prova/raw/main/vignettes/learnt60.rds). Once you have downloaded it in your working directory, invoke
+The results of this updated inference are now stored in the compressed file `K.rds` within the new output directory. For your convenience the object produced by the computation above can be downloaded as the file [`K60.rds`](https://github.com/pglpm/prova/raw/main/vignettes/K60.rds). Once you have downloaded it in your working directory, invoke
 
 
 ``` r
-learnt60 <- 'learnt60.rds'
+K60 <- 'K60.rds'
 ```
 
 which we now use to update our analysis.
@@ -932,10 +906,10 @@ which we now use to update our analysis.
 In our preliminary analysis we focused on three questions:
 
 - *What's the overall statistical occurrence of the three species in the whole population?*
-- *What's the difference between Adélies and Chinstrap frequencies on Biscoe island?*
-- *What's the difference between Adélies and Chinstrap frequencies on Dream island?*
+- *What's the difference between Adélie and Chinstrap frequencies on Biscoe island?*
+- *What's the difference between Adélie and Chinstrap frequencies on Dream island?*
 
-We can update our answers -- frequency estimates, their credible intervals, and their probability distributions -- from the increased data sample, using the `Pr()` function [as before](#learningfirst). In the `learnt =` argument we must now use the new `learnt60` object, which points to the updated inference. Here is the calculation for all three questions:
+We can update our answers -- frequency estimates, their credible intervals, and their probability distributions -- from the increased data sample, using the `Pr()` function [as before](#learningfirst). In the `K =` argument we must now use the new `K60` object, which points to the updated inference. Here is the calculation for all three questions:
 
 
 ``` r
@@ -943,18 +917,10 @@ We can update our answers -- frequency estimates, their credible intervals, and 
 ## Y <- data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo'))
 ## X <- data.frame(island = c('Biscoe', 'Dream'))
 
-Fspecies60 <- Pr(
-    Y = Y,
-    learnt = learnt60, ## updated inference
-    parallel = 4 ## let's use 4 cores
-)
+Fspecies60 <- Pr(Y, K60) # updated inference using K60
 
-Fspecies60I <- Pr(
-    Y = Y,
-    X = X, ## argument for conditional inferences
-    learnt = learnt60, ## updated inference
-    parallel = 4 ## let's use 4 cores
-)
+## with three arguments, the second stands for the conditional
+Fspecies60I <- Pr(Y, X, K60) # updated inference using K60
 ```
 
 Just like in the preliminary analysis we can use the `plot()` and `hist()` functions to visualize estimates, credibility intervals, and probability distributions.
@@ -964,11 +930,11 @@ Consider the first question: overall statistical occurrence of the three species
 
 
 ``` r
-plot(Fspecies60)
+plot(Fspecies60, col = 8)
 ```
 
 <div class="figure">
-<img src="figure/vis60-1.jpeg" alt="**Updated frequency estimates of penguin species**" width="100%" />
+<img src="figure/vis60-1.svg" alt="**Updated frequency estimates of penguin species**" width="100%" />
 <p class="caption">**Updated frequency estimates of penguin species**</p>
 </div>
 \
@@ -980,25 +946,25 @@ You notice that the credibility intervals are now narrower, compared to those of
 ## find common y-maximum for correct visual comparison
 ymax <- max(Fspecies10$quantiles, Fspecies60$quantiles)
 
-plot(Fspecies10, ylim = c(0, ymax),
-    col = 2, lty = 2, lwd = 3, pch = 2) ## distinguish the two plots
+plot(Fspecies10, ylim = c(0, ymax), grid = FALSE,
+    col = 1, lty = 2, lwd = 3, pch = 2) ## distinguish the two plots
 
-plot(Fspecies60, ylim = c(0, ymax), add = TRUE,
-    col = 1, lty = 1, lwd = 2, pch = 1) ## distinguish the two plots
+plot(Fspecies60, ylim = c(0, ymax), grid = FALSE, add = TRUE,
+    col = 2, lty = 1, lwd = 2, pch = 1) ## distinguish the two plots
 
 legend('top', c('10 samples', '60 samples'),
-    col = 2:1, lty = 2:1, pch = 2:1, bty = 'n')
+    col = 1:2, lty = 2:1, pch = 2:1, bty = 'n')
 ```
 
-<img src="figure/vis60compare-1.jpeg" alt="" width="100%" />
+<img src="figure/vis60compare-1.svg" alt="" width="100%" />
 
 We notice the following differences, among others:
 
 - The new frequency estimates (circles) for `Adelie` and `Chinstrap` differ by around 10% from the previous ones (triangles). The estimate for `Gentoo` is around the same.
 
-- The new credibility intervals (grey bands) are narrower than the previous ones (red bands).
+- The new credibility intervals (red bands) are narrower than the previous ones (blue bands).
 
-- All new estimates (circles) are almost or fully within the 50%-credibility intervals of the previous estimates (darker-red bands). All new estimates are fully within the previous 89%-credibility intervals (lighter-red bands). These changes are consistent with the meaning of the credibility intervals: one every two estimates can end outside the 50%-credibility interval, and 1 out of 10 can end outside the 89%-credibility interval.
+- All new estimates (circles) are almost or fully within the 50%-credibility intervals of the previous estimates (darker-blue bands). All new estimates are fully within the previous 89%-credibility intervals (lighter-blue bands). These changes are consistent with the meaning of the credibility intervals: one every two estimates can end outside the 50%-credibility interval, and 1 out of 10 can end outside the 89%-credibility interval.
 
 <!-- These observations demonstrate the [features previously discussed](#nht): as the sample size increases, the uncertainty decreases, but without leading to spurious "effects". -->
 
@@ -1008,36 +974,36 @@ We can also plot the updated probability distributions for the relative frequenc
 ``` r
 hist(Fspecies10, legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 10), ## y-range same for both plots
-    col = 2:4, main = '10 samples')
+    col = 1:3, main = '10 samples')
 ```
 
-<img src="figure/hist60-1.jpeg" alt="" width="100%" />
+<img src="figure/hist60-1.svg" alt="" width="100%" />
 
 ``` r
 
 hist(Fspecies60, legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 10), ## y-range same for both plots
-    col = 2:4, main = '60 samples')
+    col = 1:3, main = '60 samples')
 ```
 
-<img src="figure/hist60-2.jpeg" alt="" width="100%" />
+<img src="figure/hist60-2.svg" alt="" width="100%" />
 
 We see that in our initial inference (top plot) all three probability distributions largely overlapped, indicating our uncertainty on whether any of these frequencies might be very different from the others.
 
-In our updated inference (bottom plot) there is still a large overlap for the probabilities of `Adelie` (solid red curve) and `Gentoo` (dot-dashed green curve) frequencies, indicating that we're still very uncertain on whether these frequencies might be very different or not -- we need more sample to resolve this. But we can already conclude, with high probability, that their difference won't be larger than around 0.2 (the approximate width of their distributions).
+In our updated inference (bottom plot) there is still a large overlap for the probabilities of `Adelie` (solid blue curve) and `Gentoo` (dot-dashed green curve) frequencies, indicating that we're still very uncertain on whether these frequencies might be very different or not -- we need more sample to resolve this. But we can already conclude, with high probability, that their difference won't be larger than around 0.2 (the approximate width of their distributions).
 
-But the probability distribution for the `Chinstrap` frequency (dashed blue curve) has now a smaller overlap with the other two: there's an increased probability that this frequency is different by around 0.2 from at least one of the other two. Later on we shall see how to calculate these probabilities exactly.
+But the probability distribution for the `Chinstrap` frequency (dashed red curve) has now a smaller overlap with the other two: there's an increased probability that this frequency is different by around 0.2 from at least one of the other two. Later on we shall see how to calculate these probabilities exactly.
 
 Our updated quantitative answer to the question "*What's the overall statistical occurrence of the three species in the whole population?*" is as follows:
 
 
 ``` r
 print(Fspecies60)
-#            prob. & vrb.
-# species     value Q5.5%  Q25%  Q75% Q94.5%
-#   Adelie    0.395 0.296 0.352 0.436  0.498
-#   Chinstrap 0.210 0.133 0.174 0.242  0.295
-#   Gentoo    0.395 0.298 0.353 0.436  0.495
+#            probability
+# species     value   +/-     Q5.5%  Q25%   Q75%   Q94.5%
+#   Adelie    0.3966  0.0011  0.3020 0.3556 0.4374 0.4960
+#   Chinstrap 0.21035 0.00085 0.1321 0.1747 0.2423 0.2961
+#   Gentoo    0.3931  0.0011  0.2976 0.3502 0.4356 0.4911
 ```
 
 > From a sample of 10 penguins, the inference about the relative frequencies of the three species in the full population is as follows:
@@ -1065,22 +1031,22 @@ We can quickly repeat the analysis above for the *conditional* frequencies on th
 hist(Fspecies10I, subset = list(island = 'Dream'),
     legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 13), ## same y-range
-    col = 2:4, main = '10 samples, Dream island')
+    col = 1:3, main = '10 samples, Dream island')
 ```
 
-<img src="figure/hist60Dream-1.jpeg" alt="" width="100%" />
+<img src="figure/hist60Dream-1.svg" alt="" width="100%" />
 
 ``` r
 
 hist(Fspecies60I, subset = list(island = 'Dream'),
     legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 13), ## same y-range
-    col = 2:4, main = '60 samples, Dream island')
+    col = 1:3, main = '60 samples, Dream island')
 ```
 
-<img src="figure/hist60Dream-2.jpeg" alt="" width="100%" />
+<img src="figure/hist60Dream-2.svg" alt="" width="100%" />
 
-The new frequency estimates for `Adelies` (solid red line) and `Chinstrap` (dashed blue line) are now around 0.2 apart; the previous estimates had them around 0.1 apart. This change is not unexpected: the new estimates are well within the previous credibility intervals; we were correctly warned about their possible change.
+The new frequency estimates for `Adelie` (solid blue line) and `Chinstrap` (dashed red line) are now around 0.2 apart; the previous estimates had them around 0.1 apart. This change is not unexpected: the new estimates are well within the previous credibility intervals; we were correctly warned about their possible change.
 
 
 ### For `Biscoe` island: a surprising result {#surprise}
@@ -1090,24 +1056,24 @@ The new frequency estimates for `Adelies` (solid red line) and `Chinstrap` (dash
 hist(Fspecies10I, subset = list(island = 'Biscoe'),
     legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 17), ## same y-range from previous plot
-    col = 2:4, main = '10 samples, Biscoe island')
+    col = 1:3, main = '10 samples, Biscoe island')
 ```
 
-<img src="figure/hist60Biscoe-1.jpeg" alt="" width="100%" />
+<img src="figure/hist60Biscoe-1.svg" alt="" width="100%" />
 
 ``` r
 
 hist(Fspecies60I, subset = list(island = 'Biscoe'),
     legend = 'topright', xlim = c(0, 1),
     ylim = c(0, 17), ## same y-range from previous plot
-    col = 2:4, main = '60 samples, Biscoe island')
+    col = 1:3, main = '60 samples, Biscoe island')
 ```
 
-<img src="figure/hist60Biscoe-2.jpeg" alt="" width="100%" />
+<img src="figure/hist60Biscoe-2.svg" alt="" width="100%" />
 
-The new frequency estimates for `Adelies` (solid red line) and `Chinstrap` (dashed blue line) are now around 0.2 apart, whereas the previous estimates were almost equal. Again this is not unexpected, and these changes are well within the previous credibility intervals.
+On Biscoe, the new frequency estimates for `Adelie` (solid blue line) and `Chinstrap` (dashed red line) are now around 0.2 apart, whereas the previous estimates were almost equal. Again this is not unexpected, and these changes are well within the previous credibility intervals.
 
-Notably, we see now a clear separation between the probability distribution for the frequency of `Gentoo` (dot-dashed green), and that for `Chinstrap` (dashed blue). This means that these two frequencies must be clearly different. Can we quantify how different, and with which uncertainty?
+Notably, we see now a clear separation between the probability distribution for the frequency of `Gentoo` (dot-dashed green), and that for `Chinstrap` (dashed red). This means that these two frequencies must be clearly different. Can we quantify how different, and with which uncertainty?
 
 Yes, the probability of their difference can be calculated and visualized as follows:
 
@@ -1116,13 +1082,13 @@ Yes, the probability of their difference can be calculated and visualized as fol
 freqdiff <- Fspecies60I$samples['Gentoo', 'Biscoe',] -
     Fspecies60I$samples['Chinstrap', 'Biscoe',]
 
-hist(freqdiff, plot = TRUE, xlim = c(-0.5, 1),
+hist(freqdiff, plot = TRUE, xlim = c(-0.5, 1), breaks = 'FD',
     xlab = 'frequency difference', ylab = 'probability density',
-    main = NULL)
+    col = 7, main = NULL)
 ```
 
 <div class="figure">
-<img src="figure/probdifference-1.jpeg" alt="**probability of frequency difference between Gentoo and Chinstrap**" width="100%" />
+<img src="figure/probdifference-1.svg" alt="**probability of frequency difference between Gentoo and Chinstrap**" width="100%" />
 <p class="caption">**probability of frequency difference between Gentoo and Chinstrap**</p>
 </div>
 
@@ -1131,14 +1097,14 @@ There's clearly a high probability that `Gentoo` frequency is larger than `Chins
 
 ``` r
 median(freqdiff)
-# [1] 0.704726
+# [1] 0.703993
 
 quantile(freqdiff, c(0.055, 0.945))
 #     5.5%    94.5% 
-# 0.536058 0.831464
+# 0.534349 0.831517
 ```
 
-> From a sample of 60 penguins, the difference between the frequencies of `Gentoo` species and `Chinstrap` species, on `Biscoe` island, is estimated with a median of 0.7, and it is between 0.54 and 0.83 with 89% probability.
+> From a sample of 60 penguins, the difference between the frequencies of `Gentoo` species and `Chinstrap` species, on `Biscoe` island, is estimated with a median of 0.7, and it is between 0.53 and 0.83 with 89% probability.
 
 
 Maybe you prefer a ratio between the two frequencies:
@@ -1149,14 +1115,14 @@ freqratio <- Fspecies60I$samples['Gentoo', 'Biscoe',] /
     Fspecies60I$samples['Chinstrap', 'Biscoe',]
 
 median(freqratio)
-# [1] 20.5296
+# [1] 21.1915
 
 quantile(freqratio, c(0.055, 0.945))
-#     5.5%    94.5% 
-#  6.65212 96.02806
+#      5.5%     94.5% 
+#   6.70652 102.63922
 ```
 
-> From a sample of 60 penguins, the ratio between the frequencies of `Gentoo` species on `Chinstrap` species, on `Biscoe` island, is estimated with a median of 21, and it is between 6.65 and 96.03 with 89% probability.
+> From a sample of 60 penguins, the ratio between the frequencies of `Gentoo` species on `Chinstrap` species, on `Biscoe` island, is estimated with a median of 21, and it is between 6.71 and 102.64 with 89% probability.
 
 It is remarkable that with only 60 penguins -- and not all of them from Biscoe island -- we can conclude with a high probability (95%) that there are at least 7 times more Gentoo penguins than Chinstrap penguins on Biscoe island! Note an important consequence from the point of view of hypothesis testing:
 
@@ -1174,84 +1140,28 @@ Let's emphasize again an important feature of Bayesian inference: you can *monit
 
 With 60 data samples, we consider our uncertainties about our research questions **Q1** and **Q2** still too large -- except for an important result about Gentoo and Chinstrap species on Biscoe island, which we can already announce. Let's suppose that we continued sampling; our colleagues sent us 284 more data samples, for a total of 344 with the ones previously sent. The sampling then stopped, so this is all the data we have to report our final findings and their uncertainty.
 
-Let's store all datapoints in the file `penguin_data.csv`:
+Our dataset is now the full `penguins` dataset, or equivalently `penguins_shuffled` -- the order of the data in the dataset does not matter.
 
-
-``` r
-datafile <- 'penguin_data.csv'
-pwrite.csv(penguin, datafile)
-```
 As usual we perform the updated inference with the `learn()` function (and as usual please wait before running the code below); this time we use 8 parallel cores:
 
 
 ``` r
-learntall <- learn(
-    data = datafile,
-    metadata = metadatafile,
+Kall <- learn(
+    data = penguins, # or 'data = penguins_shuffled'
+    metadata = meta_penguins,
     outputdir = 'penguin_inference',
     parallel = 8 ## how many cores to use for the computation
 )
-## Registered socket cluster with 8 nodes on host ‘localhost’.
-## 
-## Learning from 344 datapoints, 8 variates.
-## 
-##  Saving output in directory
-##  __penguin_inference_all-V8_D344_S3600_260622T073853 
-## 
-## Starting Monte Carlo sampling of 3600 samples by 8 chains
-## in a space of 1023 (effectively 89707) dimensions.
-## Using 8 cores: 450 samples per chain, max 1 chains per core.
-## Requested:   ESS 450   rel.MCSE 0.047.
-## Core logs are being saved in individual files.
-## C-compiling samplers appropriate to the variates (Nimble v1.4.2)
-## this can take tens of minutes. Please wait...
-## Compiled core 1. Number of samplers: 2757.             
-## Estimating remaining time, please be patient...
-## Core 1 finished.                                        
-## Core 3 finished.                                        
-## Core 8 finished.                                        
-## Core 7 finished.                                        
-## Core 4 finished.                                        
-## Core 5 finished.                                        
-## Core 2 finished.                                        
-## Core 6 finished.                                        
-## Finished Monte Carlo sampling.
-## Highest number of Monte Carlo iterations across chains: 1541125.
-## Highest number of used mixture components: 8.
-## 
-## Checking test data
-## (#8 #37 #80 #90 #96 #115 #116 #129 #162 #230 #258 #342):
-## rel. CI error: 0.0243 to 0.293
-## ESS: 627 to 3520
-## needed thinning: 2.13 to 310
-## average: 3.18e-09 to 5.58e-08
-## quantile width: 5.45e-09 to 7.18e-08
-## 
-## Plotting final Monte Carlo traces and marginal samples...
-## 
-## Total computation time: 17 hours
-## Average preparation & finalization time: 5.4 mins.
-## Average Monte Carlo time per chain: 2.8 hours.
-## Max total memory used: approx 7100MB.
-## Max memory used per core: approx 1100MB.
-## Removing temporary output files.
-## Finished.
-## 
-## ***************************************************
-##  Output saved in directory
-## __penguin_inference_all-V8_D344_S3600_260622T073853
-## ***************************************************
-## 
-## Closing connections to cores.
+## [Output omitted]
 ```
 
-The calculation with 344 sample data took around 7 GB and 17 hours.
+The calculation with 344 datasamples took around 7 GB and 17 hours.
 
-The results of this final inference are stored in the compressed file `learnt.rds` within the new output directory. The object produced by the computation above can be downloaded as the file [`learntall.rds`](https://github.com/pglpm/prova/raw/main/vignettes/learntall.rds). Once you have downloaded it in your working directory, invoke
+The results of this final inference are stored in the compressed file `K.rds` within the new output directory. The object produced by the computation above can be downloaded as the file [`Kall.rds`](https://github.com/pglpm/prova/raw/main/vignettes/Kall.rds). Once you have downloaded it in your working directory, invoke
 
 
 ``` r
-learntall <- 'learntall.rds'
+Kall <- 'Kall.rds'
 ```
 
 ## Final results on overall species frequencies
@@ -1260,49 +1170,45 @@ Our final results about the overall relative frequencies of the three species ar
 
 
 ``` r
-## 'Y' and 'X' were previously defined with:
+## 'Y' was previously defined with:
 ## Y <- data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo'))
 
-Fspeciesall <- Pr(
-    Y = Y,
-    learnt = learntall, ## updated inference
-    parallel = 4 ## let's use 4 cores
-)
+Fspeciesall <- Pr(Y, Kall) # updated inference using Kall
 ```
 
 Let's plot the estimated frequencies with their credibility intervals, and also their probability distributions:
 
 
 ``` r
-plot(Fspeciesall, ylim = c(0, 1))
+plot(Fspeciesall, ylim = c(0, 1), col = 8)
 ```
 
-<img src="figure/visall-1.jpeg" alt="" width="100%" />
+<img src="figure/visall-1.svg" alt="" width="100%" />
 
 ``` r
 
-hist(Fspeciesall, xlim = c(0, 1), legend = 'topright')
+hist(Fspeciesall, xlim = c(0, 1), col = 1:3, legend = 'topright')
 ```
 
-<img src="figure/visall-2.jpeg" alt="" width="100%" />
+<img src="figure/visall-2.svg" alt="" width="100%" />
 
 The last plot is visually the most complete answer we can give to our research question **Q1**: "*What's the overall statistical occurrence of the three species in the whole population?*". A quantitative summary can be extracted from the `Fspeciesall` in the usual way:
 
 
 ``` r
 print(Fspeciesall)
-#            prob. & vrb.
-# species      value  Q5.5%   Q25%   Q75% Q94.5%
-#   Adelie    0.4417 0.3981 0.4231 0.4603 0.4838
-#   Chinstrap 0.1988 0.1660 0.1839 0.2126 0.2340
-#   Gentoo    0.3594 0.3194 0.3413 0.3773 0.4002
+#            probability
+# species     value   +/-     Q5.5%   Q25%    Q75%    Q94.5% 
+#   Adelie    0.44191 0.00049 0.39927 0.42335 0.45985 0.48506
+#   Chinstrap 0.19936 0.00034 0.16716 0.18521 0.21310 0.23395
+#   Gentoo    0.35873 0.00043 0.31698 0.34133 0.37647 0.40018
 ```
 
 > From a sample of 344 penguins [add a more thorough specification of population and sampling procedure here], the relative frequencies of the three species in the full population are estimated as follows (obviously the three estimates and uncertainties are not independent, because the frequencies must add up to 1):
 > 
 > Adélie
 > : estimate 0.44
->  <br>true rel. frequency between 0.40 and 0.48 with 89% probability.
+>  <br>true rel. frequency between 0.40 and 0.49 with 89% probability.
 > 
 > Chinstrap
 > : estimate 0.20
@@ -1325,14 +1231,12 @@ Each question can be answered by means of the `Pr()` function, and visualized wi
 
 ### **Q2a**: species on Biscoe
 
-We define an object `Y` for the variate we want to know the frequency about, and an object `X` for the *subpopulation* we're restricting our analysis to. Recall that we can use the function `vrtgrid()` to form a grid of all possible realistic values:
+We define an object `Y` for the variate we want to know the frequency about, and an object `X` for the *subpopulation* we're restricting our analysis to. Recall that we can use the function `vrtgrid()` to generate a grid of all possible realistic values:
 
 
 ``` r
 ## All values for the variate of interest
-Yvls <- vrtgrid(vrt = 'species', learnt = learntall)
-## build Y object
-Y <- data.frame(species = Yvls)
+Y <- vrtgrid('species', Kall)
 
 Xvrt <- 'island' ## subpopulation variate
 Xvls <- 'Biscoe' ## subpopulation value or values
@@ -1340,28 +1244,28 @@ Xvls <- 'Biscoe' ## subpopulation value or values
 X <- data.frame(Xvls)
 colnames(X) <- Xvrt
 
-Fanalysis <- Pr(Y = Y, X = X, learnt = learntall, parallel = 4)
+Fanalysis <- Pr(Y, X, Kall)
 ```
 Here are the probability distributions and the credibility intervals for the three frequencies:
 
 
 ``` r
-hist(Fanalysis, xlim = c(0, 1), col = 2:4, ## same colours as before!
+hist(Fanalysis, xlim = c(0, 1), col = 1:3, # same colours as before!
     legend = 'topright')
 ```
 
-<img src="figure/unnamed-chunk-8-1.jpeg" alt="" width="100%" />
+<img src="figure/unnamed-chunk-8-1.svg" alt="" width="100%" />
 
 ``` r
 
 print(Fanalysis)
 # , , |island = Biscoe
 # 
-#            prob. & vrb.
-# species      value  Q5.5%   Q25%   Q75% Q94.5%
-#   Adelie    0.2662 0.2130 0.2427 0.2880 0.3220
-#   Chinstrap 0.0117 0.0028 0.0059 0.0156 0.0254
-#   Gentoo    0.7221 0.6662 0.6993 0.7463 0.7747
+#            probability
+# species     value   +/-     Q5.5%   Q25%    Q75%    Q94.5% 
+#   Adelie    0.26745 0.00064 0.2150  0.24372 0.29035 0.3233 
+#   Chinstrap 0.01197 0.00017 0.00271 0.00593 0.01609 0.02712
+#   Gentoo    0.72058 0.00067 0.66408 0.69766 0.74480 0.7745
 ```
 
 Conclusion:
@@ -1370,7 +1274,7 @@ Conclusion:
 > 
 > Adélie
 > : estimate 0.27
->  <br>true rel. frequency between 0.21 and 0.32 with 89% probability.
+>  <br>true rel. frequency between 0.22 and 0.32 with 89% probability.
 > 
 > Chinstrap
 > : estimate 0.01
@@ -1378,7 +1282,7 @@ Conclusion:
 > 
 > Gentoo
 > : estimate 0.72
->  <br>true rel. frequency between 0.67 and 0.77 with 89% probability.
+>  <br>true rel. frequency between 0.66 and 0.77 with 89% probability.
 
 Note how our [previous estimates from 60 samples](#surprise) were already quite on the spot.
 
@@ -1389,9 +1293,7 @@ In this case, `Adelie` penguins are our subpopulation:
 
 
 ``` r
-Yvls <- vrtgrid(vrt = 'island', learnt = learntall)
-## build Y object
-Y <- data.frame(island = Yvls)
+Y <- vrtgrid('island', Kall)
 
 Xvrt <- 'species' ## subpopulation variate
 Xvls <- 'Adelie' ## subpopulation value or values
@@ -1400,36 +1302,35 @@ X <- data.frame(Xvls)
 colnames(X) <- Xvrt
 
 ## NB: rewriting the previous 'Fanalysis' object
-Fanalysis <- Pr(Y = Y, X = X, learnt = learntall, parallel = 4)
+Fanalysis <- Pr(Y, X, Kall)
 ```
 Here are the probability distributions and confidence intervals for the three frequencies:
 
 ``` r
-hist(Fanalysis, xlim = c(0, 1), col = 5:7,
-    legend = 'topright')
+hist(Fanalysis, xlim = c(0, 1), col = 4:6, legend = 'topright')
 ```
 
-<img src="figure/unnamed-chunk-9-1.jpeg" alt="" width="100%" />
+<img src="figure/unnamed-chunk-9-1.svg" alt="" width="100%" />
 
 ``` r
 
 print(Fanalysis)
 # , , |species = Adelie
 # 
-#            prob. & vrb.
-# island       value Q5.5%   Q25%   Q75% Q94.5%
-#   Biscoe    0.2919 0.238 0.2668 0.3156  0.353
-#   Dream     0.3696 0.308 0.3427 0.3964  0.434
-#   Torgersen 0.3385 0.279 0.3115 0.3641  0.401
+#            probability
+# island      value   +/-     Q5.5%  Q25%    Q75%    Q94.5%
+#   Biscoe    0.29339 0.00070 0.2362 0.26734 0.31827 0.3550
+#   Dream     0.36868 0.00068 0.3067 0.34334 0.39450 0.4295
+#   Torgersen 0.33792 0.00070 0.2784 0.31289 0.36300 0.3988
 ```
 
 Conclusions:
 
-> From a sample of 344 penguins, the distribution of the **Adélies** species on the three islands is estimated as follows:
+> From a sample of 344 penguins, the distribution of the **Adélie** species on the three islands is estimated as follows:
 > 
 > Biscoe
 > : estimate 0.29
->  <br>true rel. frequency between 0.24 and 0.35 with 89% probability.
+>  <br>true rel. frequency between 0.24 and 0.36 with 89% probability.
 > 
 > Dream
 > : estimate 0.37
@@ -1439,7 +1340,7 @@ Conclusions:
 > : estimate 0.34
 >  <br>true rel. frequency between 0.28 and 0.40 with 89% probability.
 
-In this case our uncertainties do *not* allow us to exclude the possibility that Adélies penguins are roughly equally distributed on the three islands.
+In this case our uncertainties do *not* allow us to exclude the possibility that Adélie penguins are roughly equally distributed on the three islands.
 
 
 ### **Q2c**: Body mass across the three species
@@ -1449,29 +1350,27 @@ In this case we are interested in the (continuous) distribution of body mass in 
 
 ``` r
 ## Grid of realistic values for 'body_mass'
-Yvls <- vrtgrid(vrt = 'body_mass', learnt = learntall)
-## build Y object
-Y <- data.frame(body_mass = Yvls)
+Y <- vrtgrid('body_mass', Kall)
 
 ## Grid of values for 'species', the subpopulation variate
-Xvls <- vrtgrid(vrt = 'species', learnt = learntall)
-## build X object
-X <- data.frame(species = Xvls)
+X <- vrtgrid('species', Kall)
 
 ## NB: rewriting the previous 'Fanalysis' object
-Fanalysis <- Pr(Y = Y, X = X, learnt = learntall, parallel = 4)
+Fanalysis <- Pr(Y, X, Kall)
 ```
-Here is the estimated frequency distribution of body mass within each species
+Here is the estimated frequency distribution of body mass within each species, showing the uncertainty about long-run frequencies both as quantile bands and as samples:
 
 ``` r
-plot(Fanalysis, col = 2:4, legend = 'topright')
+plot(Fanalysis, col = 1:3, legend = 'topright')
+plot(Fanalysis, spread = 'samples', col = 1:3, legend = 'topright')
 ```
 
-<img src="figure/unnamed-chunk-10-1.jpeg" alt="" width="100%" />
+<img src="figure/unnamed-chunk-10-1.svg" alt="" width="100%" /><img src="figure/unnamed-chunk-10-2.svg" alt="" width="100%" />
 
 Note how the plots above give us much more information than just a set of estimates about medians and quantiles, or means and standard deviations. Note also how the distributions are not Gaussian. We can definitely say that Gentoo penguins (dot-dashed green curve) are statistically heavier than Adélie or Chinstrap ones.
 
-Consider also this question: "Do Adélie and Chinstrap penguins have identical body-mass distributions?" The plots show that this question is too generic and ambiguous. In the body-mass range between 4200 g and 5000 g, the two distributions (solid red, dashed blue) could maybe have very similar values -- there's still some uncertainty there. But in the body-mass range around 3750 g there's a high probability that the two distributions clearly differ; we see that their mean estimates are outside each other's 89%-credibility interval.
+Consider also this question: "Do Adélie and Chinstrap penguins have identical body-mass distributions?" The plots show that this question is too generic and ambiguous. In the body-mass range between 4200 g and 5000 g, the two distributions (solid blue, dashed red) could maybe have very similar values -- there's still some uncertainty there. But in the body-mass range around 3750 g there's a high probability that the two distributions clearly differ; we see that their mean estimates are outside each other's 89%-credibility interval.
+
 
 
 
@@ -1490,35 +1389,43 @@ Consider also this question: "Do Adélie and Chinstrap penguins have identical b
 
 ### On *exchangeability*: {#referencesexchang}
 
-- Lindley, Novick: [*The role of exchangeability in inference*](https://doi.org/10.1214/aos/1176345331) (1981).
+- Lindley, Novick (1981): [*The role of exchangeability in inference*](https://doi.org/10.1214/aos/1176345331).
 
-- Bernardo, Smith: [*Bayesian Theory*](https://doi.org/10.1002/9780470316870) (repr. 2000). See especially §§ 4.2--4.3, 4.6.
+- Bernardo, Smith (2000): [*Bayesian Theory*](https://doi.org/10.1002/9780470316870). See especially §§ 4.2--4.3, 4.6.
 
-- Dawid: [*Exchangeability and its ramifications*](https://doi.org/10.1093/acprof:oso/9780199695607.003.0002) (2013).
+- Fortini, Petrone (2024): [*Prediction-based uncertainty quantification for exchangeable sequences*](https://doi.org/10.1098/rsta.2022.0142).
 
-- de Finetti: [*La prévision: ses lois logiques, ses sources subjectives*](https://www.numdam.org/item/AIHP_1937__7_1_1_0) (1937).
+- Dawid (2013): [*Exchangeability and its ramifications*](https://doi.org/10.1093/acprof:oso/9780199695607.003.0002).
 
-- Heath, Sudderth: [*De Finetti's theorem on exchangeable variables*](https://doi.org/10.1080/00031305.1976.10479175) (1976).
+- de Finetti (1937): [*La prévision: ses lois logiques, ses sources subjectives*](https://www.numdam.org/item/AIHP_1937__7_1_1_0).
 
-- Hewitt, Savage: [*Symmetric measures on Cartesian products*](https://doi.org/10.1090/S0002-9947-1955-0076206-8) (1955).
+- Heath, Sudderth (1976): [*De Finetti's theorem on exchangeable variables*](https://doi.org/10.1080/00031305.1976.10479175).
+
+- Hewitt, Savage (1955): [*Symmetric measures on Cartesian products*](https://doi.org/10.1090/S0002-9947-1955-0076206-8).
 
 - **Prova** accompanying manual: [*Foundations of inference under symmetry*](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) (draft).
 
 ### On Bayesian theory in general: {#referencesbayes}
 
-- Jaynes: [*Probability Theory*](https://doi.org/10.1017/CBO9780511790423) (2003).
+- Jaynes (2003): [*Probability Theory*](https://doi.org/10.1017/CBO9780511790423).
 
-- MacKay: [*Information Theory, Inference, and Learning Algorithms*](https://www.inference.org.uk/itila/book.html) (2005).
+- MacKay (2005): [*Information Theory, Inference, and Learning Algorithms*](https://www.inference.org.uk/itila/book.html).
 
 - [*Data Science and AI Prototyping*](https://pglpm.github.io/ADA511/).
 
 - [*What's special about 89% credibility intervals?*](https://doi.org/10.5281/zenodo.17072199)
 
+### Credibility and coverage intervals {#referencescoverage}
+
+- Joint
+Committee for Guides in Metrology JCGM (2012): [*International vocabulary
+of metrology -- Basic and general concepts and associated terms (VIM)*](https://www.bipm.org/documents/20126/2071204/JCGM_200_2012.pdf). See especially Definition 2.36.
+
 ### On medical decision-making: {#referencesmedical}
 
-- Sox, Higgins, Owens, Sanders Schmidler: [*Medical Decision Making*](https://doi.org/10.1002/9781119627876) (3rd ed. 2024).
+- Sox, Higgins, Owens, Sanders Schmidler (2024): [*Medical Decision Making*](https://doi.org/10.1002/9781119627876).
 
-- Hunink, Weinstein, Wittenberg, Drummond, Pliskin, Wong, Glasziou: [*Decision Making in Health and Medicine: Integrating Evidence and Values*](https://doi.org/10.1017/CBO9781139506779) (2nd ed. 2014).
+- Hunink, Weinstein, Wittenberg, Drummond, Pliskin, Wong, Glasziou (2014): [*Decision Making in Health and Medicine: Integrating Evidence and Values*](https://doi.org/10.1017/CBO9781139506779).
 
 \
 
