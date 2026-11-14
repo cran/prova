@@ -11,6 +11,7 @@
   pch = c(1, 2, 0, 5, 6, 3),
   lwd = 2,
   col = palette(),
+  cex = NULL,
   xlab = NULL,
   ylab = NULL,
   xlim = NULL,
@@ -38,7 +39,7 @@
 
 \item{lty}{Analogous to argument \code{lty} (line style) in \code{\link[graphics:matplot]{graphics::matplot()}}, used for the main probability distributions.}
 
-\item{pch, col, xlab, ylab, main, xlim, ylim, grid, axes, add, lwd.grid, col.grid}{see analogous arguments in \code{\link[graphics:plot.default]{graphics::plot.default()}} and \code{\link[graphics:matplot]{graphics::matplot()}}.}
+\item{pch, col, cex, xlab, ylab, main, xlim, ylim, grid, axes, add, lwd.grid, col.grid}{see analogous arguments in \code{\link[graphics:plot.default]{graphics::plot.default()}} and \code{\link[graphics:matplot]{graphics::matplot()}}.}
 
 \item{lwd}{Analogous to argument \code{lwd} (line width) in \code{\link[graphics:matplot]{graphics::matplot()}}, used for the main probability distributions.}
 
@@ -70,7 +71,7 @@ The x-axis spans the possible actions, and the y-axis their expected utilities. 
 The probability that an action would still be considered optimal, if many moro learning data were collected, is indicated above the x-axis label corresponding to that action. An asterisk \code{*} marks the optimal actions. If any conditioning variate \eqn{X} was used, then one such probability is shown for each conditioning value.
 }
 \examples{
-## Use the example "prova_K" (knowledge) object 'Kexample'
+## Use the example "K" object 'Kexample'
 ## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
 
@@ -83,7 +84,9 @@ umatrix <- matrix(c(
 print(umatrix)
 
 ## Calculate the probability of the 'species outcomes
-probs <- Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+probs <- Pr(
+  data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+  NULL,
   Kexample)
 
 ## Calculate the expected utilities of the actions

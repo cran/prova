@@ -3,6 +3,21 @@
 #' @description
 #' Plot function that modifies and expands the **graphics** package's [graphics::matplot()] function in several ways.
 #'
+#' @param x Numeric or character or list: vectors of x-coordinates. If an element of `x` is missing, a numeric vector `1:...` is created having as many values as the rows of the corresponding element in `y`.
+#' @param y Numeric or character or list: vectors of y-coordinates. If an element of `y` is missing, a numeric vector `1:...` is created having as many values as the rows of the corresponding element in `x`.
+#' @param type Character vector or list indicating the type of plot for each element of `x` and `y`. The types of plot are the same as in [base::plot()], in particular `'p'` for points, `'l'` for lines, `'b'` for both points and lines, `'c'` for empty points joined by lines, `'o'` for overplotted points and lines, ``n'` for empty plot. Additional special types `'hx'`, `'qx'`, `'hy'`, `'qy'` are available for plotting histograms and quantile bands; see "Details".
+#' @param xdomain,ydomain Character or numeric or `NULL` (default): vector of possible values of the variates represented in the `x`- and `y`-axes, in case the `x` or `y` argument is a character vector. Note that the domains apply to all elements in `x` and `y`. The ordering of the values is respected. If `NULL`, then `unique(x)` or `unique(y)` is used.
+#' @param xlim,ylim `NULL` (default) or a vector of two values. If non-`NULL` and any of the two values is not finite (including `NA` or `NULL`), then the `min` or `max` `x`- or `y`-coordinates of the plotted points are used.
+#' @param alpha.f Numeric vector or list, default `1`: opacity of the line or contour colours, `0` being completely invisible and `1` completely opaque.
+#' @param xjitter,yjitter Vector or list of logicals or `NA` (default): add [base::jitter()] to `x`- or `y`-values? Useful when plotting discrete variates. If `NA`, jitter is added if both `x` and `y` are of character (or factor) class.
+#' @param fill Logical or `NA` (default). For histogram plots (`type = 'hx'` or `'hy'`), value `TRUE` means fill the histogram, and do not plot its contour; `FAlSE` means plot only its contour without filling; `NA` means plot contour and fill. For quantile plots (`type = 'qx'` or `'qy'`), value `TRUE` do not plot the bands' contours; `FAlSE` means plot only the contours without filling; `NA` plots a contour only when the quantile band has zero area (and would be invisible otherwise).
+#' @param alpha.f.fill Numeric vector or list, default `0.25`: opacity of the filling colours, `0` being completely invisible and `1` completely opaque.
+#' @param grid Logical, default `TRUE`: plot a light grid?
+#' @param lwd.grid Numeric, default 1: width of grid lines.
+#' @param col.grid Color of grid lines, default `'#00000022'`. Can be specified in any of the usual ways, see for instance [grDevices::col2rgb()].
+#' @param lty,lwd,pch,lend,col,cex,xlab,ylab,add,axes,cex.main see analogous arguments in [graphics::matplot()] and [graphics::plot.default()]; defaults are different (see "Usage").
+#' @param ... Other parameters to be passed to [graphics::matplot()].
+#'
 #' @details
 #' This function is essentially a wrapper around [graphics::matplot()], augmenting the latter with some features useful for plotting data and probabilities handled by **Prova**. Some of the additional features provided by `pplot` are the following:
 #'
@@ -18,21 +33,6 @@
 #' - Some defaults are different from [base::plot()] and [graphics::matplot()].
 #'
 #' See the package's vignettes for more examples.
-#'
-#' @param x Numeric or character or list: vectors of x-coordinates. If an element of `x` is missing, a numeric vector `1:...` is created having as many values as the rows of the corresponding element in `y`.
-#' @param y Numeric or character or list: vectors of y-coordinates. If an element of `y` is missing, a numeric vector `1:...` is created having as many values as the rows of the corresponding element in `x`.
-#' @param type Character vector or list indicating the type of plot for each element of `x` and `y`. The types of plot are the same as in [base::plot()], in particular `'p'` for points, `'l'` for lines, `'b'` for both points and lines, `'c'` for empty points joined by lines, `'o'` for overplotted points and lines, ``n'` for empty plot. Additional special types `'hx'`, `'qx'`, `'hy'`, `'qy'` are available for plotting histograms and quantile bands; see "Details".
-#' @param xdomain,ydomain Character or numeric or `NULL` (default): vector of possible values of the variates represented in the `x`- and `y`-axes, in case the `x` or `y` argument is a character vector. Note that the domains apply to all elements in `x` and `y`. The ordering of the values is respected. If `NULL`, then `unique(x)` or `unique(y)` is used.
-#' @param xlim,ylim `NULL` (default) or a vector of two values. If non-`NULL` and any of the two values is not finite (including `NA` or `NULL`), then the `min` or `max` `x`- or `y`-coordinates of the plotted points are used.
-#' @param alpha.f Numeric vector or list, default `1`: opacity of the line or contour colours, `0` being completely invisible and `1` completely opaque.
-#' @param xjitter,yjitter Vector or list of logicals or `NA` (default): add [base::jitter()] to `x`- or `y`-values? Useful when plotting discrete variates. If `NA`, jitter is added if both `x` and `y` are of character (or factor) class.
-#' @param fill Logical or `NA` (default). For histogram plots (`type = 'hx'` or `'hy'`), value `TRUE` means fill the histogram, and do not plot its contour; `FAlSE` means plot only its contour without filling; `NA` means plot contour and fill. For quantile plots (`type = 'qx'` or `'qy'`), value `TRUE` do not plot the bands' contours; `FAlSE` means plot only the contours without filling; `NA` plots a contour only when the quantile band has zero area (and would be invisible otherwise).
-#' @param alpha.f.fill Numeric vector or list, default `0.25`: opacity of the filling colours, `0` being completely invisible and `1` completely opaque.
-#' @param grid Logical, default `TRUE`: plot a light grid?
-#' @param lwd.grid Numeric, default 1: width of grid lines.
-#' @param col.grid Color of grid lines, default `'#00000022'`. Can be specified in any of the usual ways, see for instance [grDevices::col2rgb()].
-#' @param lty,lwd,pch,lend,col,xlab,ylab,add,axes,cex.main see analogous arguments in [graphics::matplot()] and [graphics::plot.default()]; defaults are different (see "Usage").
-#' @param ... Other parameters to be passed to [graphics::matplot()].
 #'
 #' @return `NULL`, [invisibly][base::invisible()]; produces a plot, see [graphics::matplot()].
 #'
@@ -81,6 +81,7 @@ pplot <- function(
     lend = par('lend'),
     pch = c(1, 2, 0, 5, 6, 3), #, 4,
     col = palette(),
+    cex = 1,
     xlab = NA, ylab = NA,
     xlim = NULL, ylim = NULL,
     add = FALSE,
@@ -378,6 +379,7 @@ pplot <- function(
                 lend = lend[[(aplot - 1) %% length(lend) + 1]],
                 pch = pch[[(aplot - 1) %% length(pch) + 1]],
                 col = adjustcolor(thiscol, alpha.f = thisalpha.f),
+                cex = cex[[(aplot - 1) %% length(cex) + 1]],
                 add = TRUE, ...)
 
         }
@@ -491,7 +493,27 @@ pplot <- function(
 #' @description
 #' This [base::plot()] method is a utility to plot probabilities obtained with [Pr()], as well as their revisabilities. The probabilities are plotted either against `Y`, with one curve for each value of `X`, or vice versa.
 #'
-#' @details For a collection of probabilities \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} with several values \eqn{y} and \eqn{x}, this plot method with argument `PvsY` set to `TRUE` shows the probabilities on the y-axis, while the x-axis spans the \eqn{y} values, the curve thus showing the probability distribution (the area underneath is 1, except for possibly omitted tails). One such curve is displayed for each \eqn{x} value. If the argument `PvsY` is `FALSE`, then the x-axis spans the \eqn{x} values instead -- thus the displayed curve is *not* a probability distribution (area underneath is not 1). One such curve is displayed for each \eqn{y} value. Which kind of plot is best depends on whether one needs to visualize how the probabilities depend on variate \eqn{Y} or on the conditioning variate \eqn{X}. The default `PvsY` value `NULL` tries to guess the desider behaviour depending on how many different values \eqn{y} and \eqn{x} are contained in the probability object `x`; the variate with the largest number of values is displayed on the x-axis, so as to clutter as little as possible the plot window with multiple curves.
+#' @param x Object of class "prova_pr" (probability), obtained with [Pr()].
+#' @param spread One of the values `'quantiles'`, `'samples'`, `'none'` (equivalent to `NA` or `FALSE`), or `NULL` (default), in which case the revisability available in `p` is used. This argument chooses how to represent the revisability of the probability; see [Pr()]. If the requested representation is not available in the object `x`, then a warning is issued and no revisability is plotted.
+#'
+#' @param PvsY Logical or `NULL`: should probabilities be plotted against their `Y` argument? If `NULL`, the argument between `Y` and `X` having larger number of values is chosen. As many probability curves will be plotted as the number of values of the other argument.
+#' @param ylab2 A title for the y-axis on the right side of the plot, if displayed.
+#' @param type `NULL` (default) or character vector or list indicating the type of plot for the main probability distribution; see [base::plot()]. The default `NULL` value uses type `'l'` (lines) for continuous variates, and `'b'` (points and lines) for discrete variates.
+#' @param lty Analogous to argument `lty` (line style) in [graphics::matplot()], used for the main probability distributions.
+#' @param lwd Analogous to argument `lwd` (line width) in [graphics::matplot()], used for the main probability distributions.
+#' @param legend One of the values `'bottomright'`, `'bottom'`, `'bottomleft'`, `'left'`, `'topleft'`, `'top'`, `'topright'`, `'right'`, `'center'` (see [graphics::legend()]): plot a legend at that position. Value `FALSE` or `NA` does not plot any legend. Default `'topright'`.
+#' @param alpha.f Numeric, default `1`: opacity of the colours of lines or markers, `0` being completely invisible and `1` completely opaque.
+#' @param quantiles.spread Numeric vector or `TRUE` or `NULL` (default): revisability quantiles to display. Value `TRUE` uses all quantiles available in the `x` object. Value `NULL` uses all quantiles available in the `x` object, or just extreme quantiles if multiple probability curves are shown.
+#' @param nsamples.spread Integer, default 360: number of samples of long-run frequencies to display.
+#' @param type.spread `NULL` (default) or character vector or list indicating the type of plot for the long-run-frequency samples; see. The default `NULL` value uses type `'l'` (lines) for continuous variates, and `'b'` (points and lines) for discrete variates.
+#' @param lty.spread Same as parameter `lty` (line style), but for the line type of the long-run-frequency samples.
+#' @param lwd.spread Same as parameter `lwd` (line width), but for the line type of the long-run-frequency samples.
+#' @param alpha.f.spread Numeric or `NULL` (default): opacity of the quantile bands or of the long-run-frequency samples, similar to `alpha.f`. `NULL` means `0.25` if `spread = 'quantiles'`; and an appropriate value if `spread = 'samples'`,dependent on the number of samples (more samples, less opacity).
+#' @param pch,col,cex,xlab,ylab,main,xlim,ylim,grid,axes,add,lwd.grid,col.grid see analogous arguments in [graphics::plot.default()] and [graphics::matplot()].
+#' @param ... Other parameters to be passed to [pplot()].
+#'
+#' @details
+#' For a collection of probabilities \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} with several values \eqn{y} and \eqn{x}, this plot method with argument `PvsY` set to `TRUE` shows the probabilities on the y-axis, while the x-axis spans the \eqn{y} values, the curve thus showing the probability distribution (the area underneath is 1, except for possibly omitted tails). One such curve is displayed for each \eqn{x} value. If the argument `PvsY` is `FALSE`, then the x-axis spans the \eqn{x} values instead -- thus the displayed curve is *not* a probability distribution (area underneath is not 1). One such curve is displayed for each \eqn{y} value. Which kind of plot is best depends on whether one needs to visualize how the probabilities depend on variate \eqn{Y} or on the conditioning variate \eqn{X}. The default `PvsY` value `NULL` tries to guess the desider behaviour depending on how many different values \eqn{y} and \eqn{x} are contained in the probability object `x`; the variate with the largest number of values is displayed on the x-axis, so as to clutter as little as possible the plot window with multiple curves.
 #'
 #' The revisabilities of the probabilities can be visualized in two different ways, determined by the argument `spread`:
 #'
@@ -506,26 +528,6 @@ pplot <- function(
 #'
 #' Continuous variates with bounded domains, such as censored variates, may have singular probability values -- concentrated probability mass -- at the boundary points. When such singular points are present, their probability scale is shown in the *right* y-axis.
 #'
-#' @param x Object of class "prova_pr" (probability), obtained with [Pr()].
-#' @param spread One of the values `'quantiles'`, `'samples'`, `'none'` (equivalent to `NA` or `FALSE`), or `NULL` (default), in which case the revisability available in `p` is used. This argument chooses how to represent the revisability of the probability; see [Pr()]. If the requested representation is not available in the object `x`, then a warning is issued and no revisability is plotted.
-#' @param subset Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.
-#'
-#' @param PvsY Logical or `NULL`: should probabilities be plotted against their `Y` argument? If `NULL`, the argument between `Y` and `X` having larger number of values is chosen. As many probability curves will be plotted as the number of values of the other argument.
-#' @param ylab2 A title for the y-axis on the right side of the plot, if displayed.
-#' @param type `NULL` (default) or character vector or list indicating the type of plot for the main probability distribution; see [base::plot()]. The default `NULL` value uses type `'l'` (lines) for continuous variates, and `'b'` (points and lines) for discrete variates.
-#' @param lty Analogous to argument `lty` (line style) in [graphics::matplot()], used for the main probability distributions.
-#' @param lwd Analogous to argument `lwd` (line width) in [graphics::matplot()], used for the main probability distributions.
-#' @param legend One of the values `'bottomright'`, `'bottom'`, `'bottomleft'`, `'left'`, `'topleft'`, `'top'`, `'topright'`, `'right'`, `'center'` (see [graphics::legend()]): plot a legend at that position. A value `FALSE` or any other does not plot any legend. Default `'topright'`.
-#' @param alpha.f Numeric, default `1`: opacity of the colours of lines or markers, `0` being completely invisible and `1` completely opaque.
-#' @param quantiles.spread Numeric vector or `NULL` (default): revisability quantiles to display. Value `NULL` uses all quantiles available in the `x` object, or just extreme quantiles if multiple probability curves are shown.
-#' @param nsamples.spread Integer, default 360: number of samples of long-run frequencies to display.
-#' @param type.spread `NULL` (default) or character vector or list indicating the type of plot for the long-run-frequency samples; see. The default `NULL` value uses type `'l'` (lines) for continuous variates, and `'b'` (points and lines) for discrete variates.
-#' @param lty.spread Same as parameter `lty` (line style), but for the line type of the long-run-frequency samples.
-#' @param lwd.spread Same as parameter `lwd` (line width), but for the line type of the long-run-frequency samples.
-#' @param alpha.f.spread Numeric or `NULL` (default): opacity of the quantile bands or of the long-run-frequency samples, similar to `alpha.f`. `NULL` means `0.25` if `spread = 'quantiles'`; and an appropriate value if `spread = 'samples'`,dependent on the number of samples (more samples, less opacity).
-#' @param pch,col,xlab,ylab,main,xlim,ylim,grid,axes,add,lwd.grid,col.grid see analogous arguments in [graphics::plot.default()] and [graphics::matplot()].
-#' @param ... Other parameters to be passed to [pplot()].
-#'
 #' @return `NULL`, [invisibly][base::invisible()]; produces a plot, see [graphics::matplot()].
 #'
 #' @seealso
@@ -536,7 +538,7 @@ pplot <- function(
 #' [pplot()] (on which `plot.prova_pr()` is based) for more general plots.
 #'
 #' @examples
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -545,7 +547,7 @@ pplot <- function(
 #' valuesBill <- vrtgrid('bill_len', Kexample)
 #'
 #' ## calculate the probabilities and quantiles
-#' probs <- Pr(valuesBill, Kexample)
+#' probs <- Pr(Y = valuesBill, K = Kexample)
 #'
 #' ## plot the probabilities and quantiles
 #' plot(probs)
@@ -557,13 +559,13 @@ pplot <- function(
 plot.prova_pr <- function(
     x,
     spread = NULL,
-    subset = NULL,
     PvsY = NULL,
     type = NULL,
     lty = c(1, 2, 4, 3, 6, 5),
     pch = c(1, 2, 0, 5, 6, 3), #, 4,
     lwd = 2,
     col = palette(),
+    cex = 1,
     xlab = NULL, ylab = NULL,
     xlim = NULL, ylim = c(0, NA),
     legend = 'topright',
@@ -583,11 +585,6 @@ plot.prova_pr <- function(
     nsamples.spread = 360,
     ...
 ){
-    ## Replace object x keeping only values given in 'subset'
-    if(!is.null(subset)){
-        x <- .prsubset(x, subset = subset)
-    }
-
     ## If there's only one probability it doesn't make sense to plot anything:
     ## print() the result instead
     if(length(x[['value']]) == 1){
@@ -601,7 +598,6 @@ plot.prova_pr <- function(
         ## We choose 'quantiles' or what's available
         if(!is.null(x[['quantiles']])) {
             spread <- 'quantiles'
-            quantiles.spread <- NULL
         } else if(!is.null(x[['samples']])){
             spread <- 'samples'
         } else {
@@ -614,17 +610,23 @@ plot.prova_pr <- function(
         spread <- match.arg(spread, c('quantiles', 'samples', 'none'))
 
         ## handle impossible requests
-        if(spread == 'quantiles' && is.null(x[['quantiles']])){
-            warning("Revisability quantiles not available in the 'x' object.")
-            spread <- 'none'
+        if(spread == 'quantiles'){
+            if(is.null(x[['quantiles']])){
+                warning("Revisability quantiles not available in the 'x' object.")
+                spread <- 'none'
+            } else {
+                qvalues <- as.numeric(
+                    sub('%', '', dimnames(x[['quantiles']])[[3]])) / 100
+                if(isTRUE(quantiles.spread)){
+                    quantiles.spread <- qvalues
+                } else if(!is.null(quantiles.spread) &&
+                              !all(quantiles.spread %in% qvalues)){
+                    warning("Requested quantiles not available in the 'x' object.")
+                    quantiles.spread <- NULL
+                }
+            }
         }
 
-        qnames <- as.numeric(sub('%', '', dimnames(x[['quantiles']])[[3]]))
-        if(spread == 'quantiles' && !is.null(quantiles.spread) &&
-               !all(quantiles.spread %in% qnames)){
-            warning("Requested quantiles not available in the 'x' object.")
-            quantiles.spread <- NULL
-        }
         if(spread == 'samples' && is.null(x[['samples']])){
             warning("Revisability samples not available in the 'x' object.")
             spread <- 'none'
@@ -672,6 +674,11 @@ plot.prova_pr <- function(
         ## It's unusual to plot probabilities of a continous variate against X
         pdeltas <- FALSE
         pvsyi <- 1
+    }
+    if(isFALSE(legend) || is.na(legend)){
+        lgnd <- NULL
+    } else if(isTRUE(legend)){
+        legend <- 'top'
     }
     npdeltas <- any(!pdeltas)
     ypdeltas <- any(pdeltas)
@@ -725,21 +732,22 @@ plot.prova_pr <- function(
 
     ## Rename the revisability object so as to avoid if-else below
     if(qspread){
-        qnames <- as.numeric(sub('%', '', dimnames(x[['quantiles']])[[3]]))
+        qvalues <- as.numeric(sub('%', '', dimnames(x[['quantiles']])[[3]])) / 100
+        if(isTRUE(quantiles.spread)){ quantiles.spread <- qvalues }
         if(is.null(quantiles.spread)){
-            mainpercentiles <- c(5.5, 94.5) # By default we choose an 89% band
+            mainpercentiles <- c(0.055, 0.945) # By default we choose an 89% band
             ## if we are plotting more than one curve, keep only the 89% band
             if(Xlen > 1 && Ylen > 1){
                 ispread <- sapply(mainpercentiles,
-                    function(xx){which.min(abs(qnames - xx))})
+                    function(xx){which.min(abs(qvalues - xx))})
             } else {
                 ispread <- TRUE
             }
         } else {
             ## Previously checked that all requested quantiles exist
-            ispread <- which(qnames %in% quantiles.spread)
+            ispread <- which(qvalues %in% quantiles.spread)
         }
-        qnames <- qnames[ispread]
+        qvalues <- qvalues[ispread]
         if(is.null(alpha.f.spread)){alpha.f.spread <- 0.25}
 
     } else if(sspread){
@@ -819,7 +827,7 @@ plot.prova_pr <- function(
             x$K, ')')
         ## if(qspread){
         ##     ylab <- paste0(ylab, '\nquantiles: ',
-        ##         paste0(round(qnames, 1), '%', collapse = ', '))
+        ##         paste0(round(qvalues, 1), '%', collapse = ', '))
         ## } else if(sspread){
         ##     ylab <- paste0(main, '\n', nsamples.spread, ' samples')
         ## }
@@ -882,6 +890,7 @@ plot.prova_pr <- function(
         lwd = largs(1, lwd.spread, lwd.spread, lwd.spread, lwd, lwd),
         pch = pchlist,
         col = largs(col, col, col, col, col, col),
+        cex = largs(cex, cex, cex, cex, cex, cex),
         alpha.f = largs(alpha.f.spread, alpha.f.spread,
             alpha.f.spread, alpha.f.spread, alpha.f, alpha.f),
         fill = NA,
@@ -907,12 +916,12 @@ plot.prova_pr <- function(
     }
 
     if(qspread){
-        mtext(paste0('Q: ', paste0(round(qnames, 1), '%', collapse = ', ')),
+        mtext(paste0('Q: ', paste0(round(qvalues * 100, 1), '%', collapse = ', ')),
             side = 2, line = -0.25, cex = 0.75)
         ## legend(x = 'bottomleft', inset = c(-0.02, -0.03), cex = 0.75,
         ##     bty = 'n', xpd = TRUE,
         ##     legend =  paste0('Q: ',
-        ##         paste0(round(qnames, 1), '%', collapse = ', ')))
+        ##         paste0(round(qvalues, 1), '%', collapse = ', ')))
         } else if(sspread){
             mtext(paste0(nsamples.spread, ' samples'),
             side = 2, line = -0.25, cex = 0.75)
@@ -956,10 +965,9 @@ plot.prova_pr <- function(
 #' The `hist()` method for a "prova_pr" (probability) object is a utility to visualize this kind of revisability, in the form of a distribution. This distribution is represented by a histogram formed from samples of revised proobabilities (or long-run frequencies). The bin size is chosen according to the Monte Carlo accuracy.
 #'
 #' @param x Object of class "prova_pr" (probability), obtained with [Pr()].
-#' @param subset Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.
 #' @param breaks as in function [graphics::hist()], or `NULL` (default). Value `NULL` determines bin width from the Monte Carlo accuracy (roughly speaking, each bin spans two standard deviations).
 #' @param alpha.f.fill Numeric, default `0.125`: opacity of the histogram filling, `0` being completely invisible and `1` completely opaque.
-#' @param legend One of the values `"bottomright"`, `"bottom"`, `"bottomleft"`, `"left"`, `"topleft"`, `"top"`, `"topright"`, `"right"`, `"center"` (see [graphics::legend()]): plot a legend at that position. A value `FALSE` or any other does not plot any legend. Default `"top"`.
+#' @param legend One of the values `'bottomright'`, `'bottom'`, `'bottomleft'`, `'left'`, `'topleft'`, `'top'`, `'topright'`, `'right'`, `'center'` (see [graphics::legend()]): plot a legend at that position. Value `FALSE` or `NA` does not plot any legend. Default `'topright'`.
 #' @param showmean Logical, default `TRUE`: show the means of the probability distributions? The means correspond to the probabilities about the next observed unit.
 #' @param lty,lwd,col,alpha.f,xlab,ylab,xlim,ylim,main,grid,axes,add see analogous arguments in [graphics::matplot()]
 #' @param ... Other parameters to be passed to [pplot()].
@@ -974,13 +982,13 @@ plot.prova_pr <- function(
 #' [pplot()] (on which `hist.prova_pr()` is based) for more general plots.
 #'
 #' @examples
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
 #' ## calculate the probability, and its revisability,
 #' ## for the value 'Adelie' of the "species" variate
-#' probs <- Pr(data.frame(species = 'Adelie'), Kexample)
+#' probs <- Pr(data.frame(species = 'Adelie'), NULL, Kexample)
 #' probs$value
 #'
 #' ## show the revisability of this probability; equivalently show
@@ -994,7 +1002,6 @@ plot.prova_pr <- function(
 #' @export
 hist.prova_pr <- function(
     x,
-    subset = NULL,
     breaks = NULL,
     legend = 'topright',
     lty = c(1, 2, 4, 3, 6, 5),
@@ -1013,11 +1020,6 @@ hist.prova_pr <- function(
     add = FALSE,
     ...
 ){
-    ## Replace object x keeping only values given in 'subset'
-    if(!is.null(subset)){
-        x <- .prsubset(x, subset = subset)
-    }
-
     ## Check that samples are available in the probability object
     if(is.null(x[['samples']])) {
         stop('The "prova_pr" object does not contain any revisability samples')
@@ -1112,7 +1114,7 @@ hist.prova_pr <- function(
     }
 
     ## Plot legends
-    if(is.character(legend) &&
+    if(!isFALSE(legend) && !is.na(legend) && is.character(legend) &&
            (legend %in%
                  c("bottomright", "bottom", "bottomleft", "left", "topleft",
                      "top", "topright", "right", "center"))){
@@ -1167,7 +1169,6 @@ hist.prova_pr <- function(
 #'
 #' @param x Object of class "prova_pr" (probability), obtained with [Pr()].
 #' @param elements character or integer vector, or `NULL` (default): elements of the "prova_pr" (probability) object to display. The syntax is the same as with [` [ `][base::Extract]. If `NULL`, the elements `'value'` and `'quantiles'` are displayed together in a special way.
-#' @param subset Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.
 #' @param digits positive integer or `NULL` or `TRUE` (default): minimal number of significant digits, see [base::print.default()]. If value is `TRUE`, then the significant digits for elements `'value'` and `'quantiles'` are determined from their respective `'value.acc'` and `'quantiles.acc'` elements of the "prova_pr" (probability) object (see [Pr()]), according to the rules of the *Guide to the expression of Uncertainty in Measurement*, keeping as many digits as given in parameter `edigits`; whereas `'samples'` elements uses `edigits` significant digits.
 #' @param edigits positive integer, default 2: number of significant digits for elements `'value.acc'` and `'quantiles.acc'`, if `digits = TRUE`.
 #' @param ... Other parameters to be passed to [base::print()].
@@ -1184,7 +1185,7 @@ hist.prova_pr <- function(
 #' [hist.prova_pr()] to plot the revisability of the probabilities as a distribution.
 #'
 #' @examples
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -1199,24 +1200,19 @@ hist.prova_pr <- function(
 #' ## display the values and revisabilities of these probabilities
 #' print(probs)
 #'
-#' ## diplay 'value' only, and only for the species value 'Gentoo'
-#' print(probs, elements = 'value', subset = list(species = 'Gentoo'))
+#' ## display 'value' only,
+#' ## use subset() to select only the value 'Gentoo' for species
+#' print(subset(probs, subsetY = (species == 'Gentoo')), elements = 'value')
 #'
 #' @concept display
 #' @export
 print.prova_pr <- function(
     x,
     elements = NULL,
-    subset = NULL,
     digits = TRUE,
     edigits = 2,
     ...
 ){
-    ## Replace object x keeping only values given in 'subset'
-    if(!is.null(subset)){
-        x <- .prsubset(x, subset = subset)
-    }
-
     vmca <- x[['value.acc']]
     if(is.null(vmca)){# output is from qPr()
         hasvmca <- FALSE
@@ -1309,12 +1305,17 @@ print.prova_pr <- function(
 #' [pplot()] (on which `hist.prova_mi()` is based) for more general plots.
 #'
 #' @examples
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
 #' ## calculate the mutual information and its revisability
-#' MI <- mutualinfo('species', 'bill_len', Kexample, nv = 2)
+#' MI <- mutualinfo(
+#'   Y1names = 'species',
+#'   Y2names = 'bill_len',
+#'   K = Kexample,
+#'   nv = 2
+#' )
 #'
 #' ## show the possible revisability of the mutual information,
 #' ## if a much larger data sample were collected
@@ -1461,12 +1462,12 @@ hist.prova_mi <- function(
 #' \donttest{
 #' ### WARNING: the following example, if run, might even take a minute or more.
 #'
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
 #' ## Calculate the mutual information between variates 'species' and 'bill_len'
-#' MI <- mutualinfo('species', 'bill_len', Kexample)
+#' MI <- mutualinfo(Y1names = 'species', Y2names = 'bill_len', K = Kexample)
 #'
 #' ## display the value and revisability of the mutual information
 #' print(MI)
@@ -1583,10 +1584,6 @@ print.prova_mi <- function(
 #' @description
 #' This [base::plot()] method is a utility to plot the expected utilities obtained with [exputility()], as well as their revisabilities.
 #'
-#' @details The x-axis spans the possible actions, and the y-axis their expected utilities. Their revisabilities are shown as an ensemble of 360 (default number) expected-utility curves; the number of samples in the ensemble is indicated beside the left y-axis. If any conditioning variate \eqn{X} was used for the probabilities, \eqn{\mathrm{Pr}(\dotso \vert X = x, \dotso)}, then one such plot is displayed for each conditioning value \eqn{x}.
-#'
-#' The probability that an action would still be considered optimal, if many moro learning data were collected, is indicated above the x-axis label corresponding to that action. An asterisk `*` marks the optimal actions. If any conditioning variate \eqn{X} was used, then one such probability is shown for each conditioning value.
-#'
 #' @param x Object of class "prova_eu" (expected utility), obtained with [exputility()].
 #' @param type Character vector (default `'b'`) or list indicating the type of plot for the main probability distribution; see [base::plot()].
 #' @param lty Analogous to argument `lty` (line style) in [graphics::matplot()], used for the main probability distributions.
@@ -1598,8 +1595,13 @@ print.prova_mi <- function(
 #' @param lty.spread Same as parameter `lty` (line style), but for the line type of the revisability samples.
 #' @param lwd.spread Same as parameter `lwd` (line width), but for the line type of the revisability samples.
 #' @param alpha.f.spread Numeric or `NULL` (default): opacity of the quantile bands or of the long-run-frequency samples, similar to `alpha.f`. `NULL` determines a value dependent on the number of samples (more samples, less opacity).
-#' @param pch,col,xlab,ylab,main,xlim,ylim,grid,axes,add,lwd.grid,col.grid see analogous arguments in [graphics::plot.default()] and [graphics::matplot()].
+#' @param pch,col,cex,xlab,ylab,main,xlim,ylim,grid,axes,add,lwd.grid,col.grid see analogous arguments in [graphics::plot.default()] and [graphics::matplot()].
 #' @param ... Other parameters to be passed to [pplot()].
+#'
+#' @details
+#' The x-axis spans the possible actions, and the y-axis their expected utilities. Their revisabilities are shown as an ensemble of 360 (default number) expected-utility curves; the number of samples in the ensemble is indicated beside the left y-axis. If any conditioning variate \eqn{X} was used for the probabilities, \eqn{\mathrm{Pr}(\dotso \vert X = x, \dotso)}, then one such plot is displayed for each conditioning value \eqn{x}.
+#'
+#' The probability that an action would still be considered optimal, if many moro learning data were collected, is indicated above the x-axis label corresponding to that action. An asterisk `*` marks the optimal actions. If any conditioning variate \eqn{X} was used, then one such probability is shown for each conditioning value.
 #'
 #' @return `NULL`, [invisibly][base::invisible()]; produces a plot, see [graphics::matplot()].
 #'
@@ -1611,7 +1613,7 @@ print.prova_mi <- function(
 #' [pplot()] (on which `plot.prova_eu()` is based) for more general plots.
 #'
 #' @examples
-#' ## Use the example "prova_K" (knowledge) object 'Kexample'
+#' ## Use the example "K" object 'Kexample'
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -1624,7 +1626,9 @@ print.prova_mi <- function(
 #' print(umatrix)
 #'
 #' ## Calculate the probability of the 'species outcomes
-#' probs <- Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+#' probs <- Pr(
+#'   data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+#'   NULL,
 #'   Kexample)
 #'
 #' ## Calculate the expected utilities of the actions
@@ -1644,6 +1648,7 @@ plot.prova_eu <- function(
     pch = c(1, 2, 0, 5, 6, 3), #, 4,
     lwd = 2,
     col = palette(),
+    cex = NULL,
     xlab = NULL, ylab = NULL,
     xlim = NULL, ylim = NULL,
     legend = 'topright',
@@ -1730,6 +1735,7 @@ plot.prova_eu <- function(
         lwd = largs(lwd.spread, lwd),
         pch = largs(pch, pch),
         col = largs(col, col),
+        cex = largs(cex, cex),
         alpha.f = largs(alpha.f.spread, alpha.f),
         fill = NA,
         xlab = xlab,
@@ -1808,7 +1814,7 @@ plot.prova_eu <- function(
 #' [exputility()] to calculate expected utilities and their revisability.
 #'
 #' @examples
-#' ## Use the example "prova_K" (knowledge) object 'Kexample'
+#' ## Use the example "K" object 'Kexample'
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -1821,7 +1827,9 @@ plot.prova_eu <- function(
 #' print(umatrix)
 #'
 #' ## Calculate the probability of the 'species outcomes
-#' probs <- Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+#' probs <- Pr(
+#'   data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+#'   NULL,
 #'   Kexample)
 #'
 #' ## Calculate the expected utilities of the actions
@@ -1897,23 +1905,23 @@ print.prova_eu <- function(
 }
 
 
-#' Print summary of a "prova_K" (knowledge) object
+#' Print summary of a "K" (more precisely "prova_K") object
 #'
 #' @description
-#' This [base::print()] method is a utility to display a summary of a "prova_K" (knowledge) object outputted by [learn()], internally using [utils::str()]. It also display a summary if [learn()]'s value is only the path to the directory of the rds file containing the "prova_K" (knowledge) object itself (see argument `valueisK =` in [learn()]), by internally retrieving the object. If you want to have a summary of a "prova_K" (knowledge) object in a given directory or rds file, you can explicitly call `print.prova_K(<file path>)`.
+#' This [base::print()] method is a utility to display a summary of a "K" (more precisely "prova_K") object outputted by [learn()], internally using [utils::str()]. It also display a summary if [learn()]'s value is only the path to the directory of the rds file containing the "K" object itself (see argument `valueisK = ` in [learn()]), by internally retrieving the object. To get a summary of a "K" object in a given directory or RDS file, the user can explicitly call `print.prova_K(<file path>)`.
 #'
-#' @param x Object of class "prova_K" (knowledge), output of [learn()].
+#' @param x Object of class "K" (more precisely "prova_K"), output of [learn()].
 #' @param ... Other parameters to be passed to [utils::str()].
 #'
-#' @return Its `x` argument, [invisibly][base::invisible()]; the [str][utils::str()]ucture of the corresponding "prova_K" (knowledge) object, if it exists, is also displayed.
+#' @return Its `x` argument, [invisibly][base::invisible()]; the [str][utils::str()]ucture of the corresponding "K" object, if it exists, is also displayed.
 #'
 #' @seealso
-#' [learn()], which generates a "prova_K" (knowledge) object.
+#' [learn()], to generate a "K" (more precisely "prova_K") object.
 #'
-#' [Kexample] an example "prova_K" (knowledge) object included with **Prova**.
+#' [Kexample] an example "K" object included with **Prova**.
 #'
 #' @examples
-#' ## Display a summary of the example "prova_K" (knowledge) object
+#' ## Display a summary of the example "K" object
 #' ## calculated from the "penguins" dataset
 #' print(Kexample)
 #'
@@ -1922,116 +1930,9 @@ print.prova_eu <- function(
 #' @concept display
 #' @export
 print.prova_K <- function(x, ...){
-    K <- .retrieveK(x)
-    if(is.null(K)){
-        message('Not a "prova_K" object')
-    } else {
-        str(object = K, ...)
-    }
+    K <- getK(x)
+    str(object = K, ...)
     invisible(x)
-}
-
-
-
-#' Subset variates of an object of class "prova_pr" (probability)
-#'
-#' An object of class "prova_pr" (probability), obtained with the [Pr()] function, holds the probabilities for all possible combinations of values of a set of joint variates `Y` conditional on a set of joint variates `X`, together with the revisabilities of these probabilities and some other information. In some cases one may wish to exclude some of the values of the `Y` or `X` variates. For instance `Y` in the probability-class object could include the variate "age" with values from 18 to 100, and one may want to retain the values from 60 to 80.
-#'
-#' @param x Object of class "prova_pr" (probability), obtained with [Pr()].
-#' @param subset Named list or named vector: variates to subset, given as list names, and corresponding values to subset.
-#'
-#' @return An object of class "prova_pr" (probability), identical to the original object `x` except for a reduced range of values in some if its variates.
-#'
-## #' @seealso
-## #' [Pr()], which generates probability objects.
-## #'
-## #' [plot.prova_pr()] to plot probabilities and quantiles calculated by `Pr()'.
-## #'
-## #' [hist.prova_pr()] to plot histograms of the probability distributions calculated by `Pr()`.
-## #'
-## #' @examples
-## #' ## Load the example `K`nowledge object calculated from the "penguins" dataset;
-## #' ## variates: 'species' and 'bill_len'
-## #' K <- Kexample
-## #'
-## #' ## Calculate the probability object for the three values of variate 'species',
-## #' ## given values 43 and 44 of variate 'bill_len';
-## #' ## this object contains probabilities, quantiles, and other information
-## #' probs <- Pr(
-## #'   Y = data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
-## #'   X = data.frame(bill_len = c(43, 44)),
-## #'   K = K
-## #' )
-## #'
-## #' probs$value
-## #'
-## #' ## Subset by retaining the values 'Adelie' and 'Gentoo' for species,
-## #' ## and 44 for bill length
-## #' newprobs <- .prsubset(
-## #'   probs,
-## #'   subset = list(species = c('Adelie', 'Gentoo'), bill_len = 43)
-## #' )
-## #'
-## #' newprobs$value
-## #'
-## #' ## Plot these conditional probabilities and their revisabilities
-## #' plot(newprobs)
-## #'
-## #' hist(newprobs)
-## #'
-#' @keywords internal
-.prsubset <- function(
-    x,
-    subset
-){
-    Ynames <- names(x$Y)
-    Xnames <- names(x$X)
-    subset <- as.list(subset)
-    vrtnames <- names(subset)
-
-    if(!all(vrtnames %in% c(Ynames, Xnames))){
-        stop("probability object does not contain some of the given variates")
-    }
-
-    ## subset Y
-    for(vrt in vrtnames[vrtnames %in% Ynames]){
-        selvals <- x$Y[[vrt]] %in% subset[[vrt]]
-        x$value <- x$value[selvals, , drop = FALSE]
-        if(!is.null(x$value.acc)){
-            x$value.acc <- x$value.acc[selvals, , drop = FALSE]
-        }
-        if(!is.null(x$quantiles)){
-            x$quantiles <- x$quantiles[selvals, , , drop = FALSE]
-        }
-        if(!is.null(x$quantiles.acc)){
-            x$quantiles.acc <- x$quantiles.acc[selvals, , , drop = FALSE]
-        }
-        if(!is.null(x$samples)){
-            x$samples <- x$samples[selvals, , , drop = FALSE]
-        }
-        x$Y <- x$Y[selvals, , drop = FALSE]
-    }
-
-    ## subset X
-    for(vrt in vrtnames[vrtnames %in% Xnames]){
-        selvals <- x$X[[vrt]] %in% subset[[vrt]]
-        x$value <- x$value[, selvals, drop = FALSE]
-        if(!is.null(x$value.acc)){
-            x$value.acc <- x$value.acc[, selvals, drop = FALSE]
-        }
-        if(!is.null(x$quantiles)){
-            x$quantiles <- x$quantiles[, selvals, , drop = FALSE]
-        }
-        if(!is.null(x$quantiles.acc)){
-            x$quantiles.acc <- x$quantiles.acc[, selvals, , drop = FALSE]
-        }
-        if(!is.null(x$samples)){
-            x$samples <- x$samples[, selvals, , drop = FALSE]
-        }
-        x$X <- x$X[selvals, , drop = FALSE]
-    }
-
-    x
 }
 
 

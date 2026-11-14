@@ -1,74 +1,4 @@
-#' Eliminate samples from mcsamples object
-#'
-#' Used in 'learn()'.
-#'
-#' @keywords internal
-.mcsubset <- function(K, subsamples) {
-    lapply(K, function(xx) {
-        do.call('[', c(
-            list(xx),
-            rep(x = TRUE, times = length(dim(xx)) - 1),
-            list(subsamples),
-            list(drop = FALSE))
-        )
-    })
-}
-
-
-#' Concatenate mcsample objects
-#'
-#' Used in 'learn()'.
-#'
-#' @keywords internal
-.mcjoin <- function(x, y){
-    if(is.null(x)){
-        y
-    } else {
-        mapply(
-            function(xx, yy) {
-                temp <- c(xx, yy)
-                dx <- dim(yy)[-length(dim(yy))]
-                dim(temp) <- c(dx, length(temp) / prod(dx))
-                temp
-            },
-            x, y,
-            SIMPLIFY = FALSE
-        )
-    }
-}
-
-
-#' Bind 3D arrays by first dimension
-#'
-#' Used in 'util_checkpoints()' within 'learn()', and in various functions in 'util_lprobs.R'.
-#'
-#' NB: the following variant is slower:
-#'
-#' ```
-#' function(x, y) {
-#'     out <- c(aperm(x), aperm(y))
-#'     dim(out) <- c(rev(dim(x)[-1]), dim(x)[1] + dim(y)[1])
-#'     aperm(out)
-#' }
-#' ```
-#'
-#' @keywords internal
-.learnbind <- function(x, y) {
-    if(is.null(x)) {
-        y
-    } else {
-        nrx <- dim(x)[1]
-        nry <- dim(y)[1]
-        out <- array(data = NA, dim = c(nrx + nry, dim(x)[-1]),
-            dimnames = NULL)
-        out[seq_len(nrx), ,] <- x
-        out[nrx + seq_len(nry), ,] <- y
-        out
-    }
-}
-
-
-#' Calculate credibility quantiles on estimated quantile
+#' Calculate credibility quantiles on estimated quantile using spectral method
 #'
 #' Calculates the lower and upper bound of a credibility interval, for various quantiles of the empirical distribution of a vector of MC samples.
 #'
@@ -76,7 +6,48 @@
 #'
 #' Tested also on t-distributions with df=1.1 and Pareto with a=1.5 (mean exists, variance infinite).
 #'
+#' Uses beta approximation
+#' from Vehtari & al. 2021 <doi:10.1214/20-BA1221> sect.4.4
+#'
+#' Used in '.workerfun()', 'learn()', 'Pr()', 'mutualinfo()'
+#'
+#' @param x A vector of MC samples
+#' @param prob numeric vector of probabilities: quantiles whose error interval is being estimated.
+#' @param Qpair vector of length two (further elements are ignored): lower and higher credibility-quantiles requested. Default yields a credibility interval of 68%, or one nominal normal standard deviation.
+#'
+#' @return A matrix with two rows and as many columns as elements in 'prob'. Forr each column, the first and second row determine the lower and upper bound of the credibility interval of width `Qpair[2] - Qpair[2]`.
+#'
+#' @import stats
+#'
+#' @keywords internal
+.funMCEQalt <- function(x, prob = c(0.055, 0.945), Qpair = pnorm(c(-1, 1))){
+    N <- length(x)
+    straces <- sort(x)
+    sapply(prob, function(aprob) {
+        Xlo <- quantile(x = x, probs = aprob,
+            na.rm = TRUE, names = FALSE, type = 6)
+        ##
+        essXlo <- .funESS3(x <= Xlo)
+        ##
+        a <- qbeta(Qpair, essXlo * aprob + 1, essXlo * (1 - aprob) + 1)
+        c(straces[max(round(a[1] * N), 1)], straces[min(round(a[2] * N), N)])
+    })
+}
+
+#' Calculate credibility quantiles on estimated quantile using batch-means
+#'
+#' Calculates the lower and upper bound of a credibility interval, for various quantiles of the empirical distribution of a vector of MC samples.
+#'
+#' Tests show that it gives a very good approximation of the "true" credibility quantiles in the case of independent samples.
+#'
+#' Tested also on t-distributions with df=1.1 and Pareto with a=1.5 (mean exists, variance infinite).
+#'
+#' Uses beta approximation
+#' from Vehtari & al. 2021 <doi:10.1214/20-BA1221> sect.4.4
+#' but this version is based on batch-means rather than Geyer's method.
+#'
 #' Used in '.workerfun()' in 'learn()'
+#'
 #'
 #' @param x A vector of MC samples
 #' @param prob numeric vector of probabilities: quantiles whose error interval is being estimated.
@@ -91,10 +62,11 @@
     N <- length(x)
     straces <- sort(x)
     sapply(prob, function(aprob) {
-        Xlo <- quantile(x = x, probs = aprob,
-            na.rm = TRUE, names = FALSE, type = 6)
+        Xlo <- quantile(x = x, probs = aprob, na.rm = TRUE, names = FALSE, type = 6)
         ##
-        essXlo <- .funESS3(x <= Xlo)
+        temp <- sd(x <= Xlo)
+        essXlo <- (if(temp > 0){(temp / .funMCSEBM(x <= Xlo))^2}else{N})
+#        essXlo <- (temp / .funMCSEBM(x <= Xlo))^2
         ##
         a <- qbeta(Qpair, essXlo * aprob + 1, essXlo * (1 - aprob) + 1)
         c(straces[max(round(a[1] * N), 1)], straces[min(round(a[2] * N), N)])
@@ -103,7 +75,10 @@
 
 #' Compute ESS
 #'
-#' Modified from 'rstan' <https://github.com/stan-dev/rstan/blob/develop/rstan/rstan/R/monitor.R>
+#' See:
+#' Geyer 1992, <doi:10.1214/ss/1177011137>,
+#' Vehtari & al. 2021 <doi:10.1214/20-BA1221>,
+#' RStan <https://github.com/stan-dev/rstan/blob/develop/rstan/rstan/R/monitor.R>
 #'
 #' Used in '.workerfun()' in 'learn()', and in '.funMCEQ()'.
 #'
@@ -122,7 +97,7 @@
   var_plus <- acov[1]
   mean_var <- var_plus * N / (N - 1)
   ##
-  ## Geyer's initial positive sequence
+  ## From Geyer 1992, initial positive sequence estimator, p.477
   rho_hat_t <- rep.int(x = 0, times = N)
   t <- 0
   rho_hat_even <- 1
@@ -144,7 +119,7 @@
   ## this is used in the improved estimate
   if (rho_hat_even>0){rho_hat_t[max_t + 1] <- rho_hat_even}
   ##
-  ## Geyer's initial monotone sequence
+  ## From Geyer 1992, initial monotone sequence estimator, p.477
   t <- 0
   while (t <= max_t - 4) {
     t <- t + 2
@@ -154,9 +129,9 @@
     }
   }
   ess <- N
-  # Geyer's truncated estimate
-  # tau_hat <- -1 + 2 * sum(rho_hat_t[1:max_t])
-  # Improved estimate reduces variance in antithetic case
+  ## From Geyer 1992, initial convex sequence estimator, p.477
+  ## tau_hat <- -1 + 2 * sum(rho_hat_t[1:max_t])
+  ## Improved estimate reduces variance in antithetic case as in RStan
   tau_hat <- -1 + 2 * sum(rho_hat_t[1:max_t]) + rho_hat_t[max_t+1]
   # Safety check for negative values and with max ess equal to ess*log10(ess)
   tau_hat <- max(tau_hat, 1/log10(ess))
@@ -173,7 +148,7 @@
 #'
 #' Tested also on t-distributions with df=1.1 and Pareto with a=1.5 (mean exists, variance infinite).
 #'
-#' `sd() / sqrt(.funESS3()` gives essentially identical results to `.funMCSELD()`, but it's 20 times slower.
+#' `sd() / sqrt(.funESS3()` gives essentially identical results to `.funMCSEBM()`, but it's 20 times slower.
 #'
 #' Used in '.combineYX()' in 'Pr()'.
 #'
@@ -182,7 +157,7 @@
 #' @return MCSE estimates, one for each trace. Division by sqrt(N) is already performed.
 #'
 #' @keywords internal
-.funMCSELD <- function(x) {
+.funMCSEBM <- function(x) {
     if(is.null(dim(x))){ dim(x) <- c(length(x), 1) }
     N <- nrow(x)
     b <- floor(sqrt(N))

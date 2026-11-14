@@ -6,7 +6,7 @@
 \alias{prova-package}
 \title{prova: Nonparametric Probabilistic-Statistical Variate Analysis}
 \description{
-Calculate posterior joint and conditional probabilities, probability distributions of population frequencies, information-theoretic measures, and expected utilities, by means of Bayesian nonparametrics. Data can be any combination of nominal, ordinal, continuous, censored, rounded types. Data imputation is automatic and done in a principled way. Markov-chain Monte Carlo calculations are automatically handled and do not require user supervision. Applications range from statistical estimation and probabilistic hypothesis testing to evidence-based inference and decision making, in a wide range of disciplines from astrophysics to medicine. For more details and examples see for instance Porta Mana & al. (2026) \doi{10.31219/osf.io/8nr56}, Dunson & Bhattacharya (2011) \doi{10.1093/acprof:oso/9780199694587.003.0005}, Lindley & Novick (1981) \doi{10.1214/aos/1176345331}, Bernardo & Smith (2000) \doi{10.1002/9780470316870}, Müller et al. (2015) \doi{10.1007/978-3-319-18968-0}. Data-training function requires the package 'Nimble'.
+Calculate posterior joint and conditional probabilities, probability distributions of population frequencies, information-theoretic measures, and expected utilities, by means of Bayesian nonparametrics. Data can be any combination of nominal, ordinal, continuous, censored, rounded types. Data imputation is automatic and done in a principled way. Markov-chain Monte Carlo calculations are automatically handled and do not require user supervision. Applications range from statistical estimation, hypothesis testing, and association studies, to subgroup analysis, risk analysis, and probability calibration of machine-learning algorithms. Application disciplines range from astrophysics to medicine. For more details and examples see for instance Porta Mana & al. (2026) \doi{10.31219/osf.io/8nr56}, Dunson & Bhattacharya (2011) \doi{10.1093/acprof:oso/9780199694587.003.0005}, Lindley & Novick (1981) \doi{10.1214/aos/1176345331}, Bernardo & Smith (2000) \doi{10.1002/9780470316870}, Müller et al. (2015) \doi{10.1007/978-3-319-18968-0}. Data-training function requires the package 'Nimble'.
 }
 \seealso{
 Useful links:
@@ -29,6 +29,7 @@ Other contributors:
   \item Aurora Grefsrud \email{agre@hvl.no} (\href{https://orcid.org/0009-0005-9063-4131}{ORCID}) [contributor]
   \item Håkon Mydland \email{haakon.mydland@gmail.com} (\href{https://orcid.org/0009-0004-9558-8894}{ORCID}) [contributor]
   \item Maksim Ohvrill \email{maksimohvrill@hotmail.com} [contributor]
+  \item Torstein Sleire \email{tor-sle@hotmail.com} (\href{https://orcid.org/0009-0004-4040-2458}{ORCID}) [contributor]
   \item Simen Hesthamar Hauge \email{simen@hhnet.no} (\href{https://orcid.org/0009-0005-6158-2846}{ORCID}) [contributor]
 }
 

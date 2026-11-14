@@ -92,7 +92,7 @@ learn(
 
 \item{thinning}{Integer or \code{NULL} (default): thin out the Monte Carlo samples by this value. If \code{NULL}: let the diagnostics decide the thinning value.}
 
-\item{verbose}{Logical, default \code{TRUE}: output the progress to terminal? If \code{FALSE}, the progress is outputted to the file \code{'main.out'} in the \code{outputdir} directory.}
+\item{verbose}{Logical, default \code{TRUE}: output the progress also to terminal? If \code{FALSE}, the progress is outputted only to the file \code{'main.out'} in the \code{outputdir} directory.}
 
 \item{plottraces}{Logical, default \code{TRUE}: save plots of the Monte Carlo traces of diagnostic values?}
 
@@ -103,18 +103,20 @@ learn(
 \item{hyperparams}{List: hyperparameters of the hyperprior; see values in "Usage".}
 }
 \value{
-A "prova_K" (knowledge) object, or name of directory containing such an object and other output files, or \code{NULL}, depending on argument \code{valueisK}.
+A "K" (more precisely "prova_K") object, or name of directory containing such an object and other output files, or \code{NULL}, depending on argument \code{valueisK}.
 
-\code{learn()} saves several files in a directory. By default this output directory is a temporary directory within the one used by \code{\link[base:tempdir]{base::tempdir()}}, but an alternative one can be chosen with the argument \verb{outputdir =}. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
+\code{learn()} saves several files in a directory. By default this output directory is a temporary directory within the one used by \code{\link[base:tempdir]{base::tempdir()}}, but an alternative one can be chosen with the argument \verb{outputdir = }. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
 \itemize{
 \item \code{MCtraces.pdf}: shows several trace plots of the Monte Carlo sampling; the corresponding data are in the file \code{MCtraces.rds}.
 \item \code{plotsamples_learn.pdf}, \code{plotquantiles_learn.pdf}: show the marginal posterior distributions of each individual variate, together with their "revisability" (as samples or quantiles).
-\item \verb{log-1.out}, \verb{log-2.out}, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
+\item \verb{log-1.out}, \verb{log-2.out}, ... one for each parallel node; report the progress of each parallel Monte Carlo computation and notes about it.
 \item \code{rng_seed.rds}: the state of the pseudorandom seed (see \link[base:Random]{base::Random}) when \code{learn()} was called.
 \item \code{metadata.csv}: a copy of the metadata.
 }
 
-It is recommended that you give an explicit argument \verb{outputdir =} and save the directory with the files above for future reference. In particular, the \code{MCtraces.pdf} plot and \code{MCtraces.rds} data can be useful to report Monte Carlo convergence in any work of yours that used \strong{Prova}.
+It is recommended that an explicit argument \verb{outputdir = } be given, so as to save the directory with the files above for future reference. In particular, the \code{MCtraces.pdf} plot and \code{MCtraces.rds} data can be useful to report Monte Carlo convergence in any work that used \strong{Prova}.
+
+During operation, computation progress and estimated end times for each node's computation are outputted to the file \code{'main.out'} in the output directory, and also to the console if argument \code{verbose} is \code{TRUE}. Note that the estimated end times are very approximate and often quite conservative.
 }
 \description{
 Compute the posterior joint probability distribution of the variates conditional on the given data, by means of Markov-chain Monte Carlo, using the package \strong{Nimble}.
@@ -124,13 +126,13 @@ To use this function, the package \href{https://cran.r-project.org/package=nimbl
 
 This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its "revisability". From this full joint distribution any other distributions of interest can subsequently be computed; see \code{\link[=Pr]{Pr()}} and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the \emph{whole population}, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is \emph{principled}, made according to the rules of probability theory.
 
-The output is a "prova_K" (knowledge) object, typically saved in a \code{K.rds} file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
+The output is a "K" (more precisely "prova_K") object, typically saved in a \code{K.rds} file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
 
 See \code{vignette('intro')} for introductory examples.
 
 The computation is "non-parametric": probability or frequency distributions are not assumed to be Gaussian or of any other specific shape; no "model" is assumed. The mathematical representation of the space of joint frequency distributions follows ideas of Dunson & Bhattacharya (2011); see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details.
 
-The computation is done via Markov-chain Monte Carlo, using the package \strong{Nimble}. "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details. The default values for convergence require that all of the following three conditions be fulilled:
+The computation is done via Markov-chain Monte Carlo, using the package \strong{Nimble}. "Convergence" of the Monte Carlo computation is automatically assessed with methods similar to those described in Vehtari & al. (2021), Kwon & al. (2025), Flegal & al (2008) \url{doi:10.1214/08-STS257}, Jones & al. (2006): \url{doi:10.1198/016214506000000492}; see \href{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}{technical manual} for details. The default values for convergence require that all of the following three conditions be fulilled:
 \itemize{
 \item The computation's numerical error (Monte-Carlo Standard Error) for the posterior probability must be smaller than 4.7\% of the standard deviation of the posterior's variability.
 \item The computation's numerical error for the 0.055- and 0.945-percentiles of the posterior's variability should be smaller than 4.7\% of the distance between them.
@@ -211,6 +213,8 @@ About Markov-chain Monte Carlo and "convergence":
 \item Kwon & al. (2025): \emph{MCMC stopping rules in latent variable modelling}, \url{doi:10.1111/bmsp.12357}.
 \item Vehtari & al. (2021): \emph{Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC}, \url{doi:10.1214/20-BA1221}.
 \item Roy (2020): \emph{Convergence diagnostics for Markov chain Monte Carlo}, \url{doi:10.1146/annurev-statistics-031219-041300}.
+\item Flegal & al. (2008): \emph{Markov chain Monte Carlo: can we trust the third significant figure?}, \url{doi:10.1214/08-STS257}.
+\item Jones & al. (2006): \emph{Fixed-width output analysis for Markov chain Monte Carlo}, \url{doi:10.1198/016214506000000492}.
 \item Gilks & al. (1998): \emph{Markov Chain Monte Carlo in Practice}, Chapman & Hall/CRC \url{doi:10.1201/b14835}.
 \item D. J. C. MacKay (2005): \emph{Information Theory, Inference, and Learning Algorithms}, Cambridge University Press \url{https://www.inference.org.uk/itila/book.html}.
 \item Porta Mana \url{https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf}.
@@ -218,6 +222,8 @@ About Markov-chain Monte Carlo and "convergence":
 }
 \seealso{
 \code{\link[=metadatatemplate]{metadatatemplate()}} to help writing metadata files.
+
+\code{\link[=useK]{useK()}} to set a "K" (more precisely "prova_K") object generated by \code{learn()} as default in all subsequent \verb{K = } arguments.
 
 \code{\link[=Pr]{Pr()}} to calculate probabilities, and \code{\link[=qPr]{qPr()}} to calculate quantiles, given the data processed by \code{learn()}.
 

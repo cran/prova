@@ -7,7 +7,7 @@
 qPr(
   p,
   Yname,
-  X = NULL,
+  X = NA,
   K = NULL,
   tails = NULL,
   nsamples = "all",
@@ -25,9 +25,17 @@ qPr(
 
 \item{Yname}{Character vector: name of variate whose quantiles will be computed.}
 
-\item{X}{Matrix or data.table or \code{NULL} (default): set of values of variates on which we want to condition. If \code{NULL}, no conditioning is made (except for conditioning on the learning dataset and prior assumptions). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.}
+\item{X}{Matrix or data.table, or \code{NULL} or \code{NA} (default): set of values of variates in the conditional of the probability of \code{Y}. If \code{NA} or \code{NULL}, no conditioning is made (besides the conditioning on knowledge \code{K}). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.}
 
-\item{K}{A "prova_K" (knowledge) object produced by \code{\link[=learn]{learn()}}. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one. See "Details" for the interpretation of unnamed arguments.}
+\item{K}{One of these alternatives:
+\itemize{
+\item A "K" (more precisely "prova_K") object.
+\item A character string of the path to an \link[base:readRDS]{RDS} file (typically created by \code{learn()}) containing a valid "K" object.
+\item A character string of the path to a directory (also typically created by \code{learn()}) containing such an \link[base:readRDS]{RDS} file of a "K" object.
+\item For function \code{getK()} it can also be \code{NULL} or omitted, if a default \verb{K = } argument has been defined with \code{useK()}.
+}
+
+Alternatively, a default \verb{K = } argument can be set with \code{useK()}, in which case the \verb{K = } argument may be omitted. See "Details" for the interpretation of unnamed arguments.}
 
 \item{tails}{Named vector or list, or \code{NULL} (default). The names must match some or all of the variates in arguments \code{X}. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in \code{\link[=Pr]{Pr()}}.}
 
@@ -54,28 +62,34 @@ qPr(
 \item{tol}{numeric positive: tolerance in the calculation of quantiles. Default: \code{.Machine$double.eps * 10} (typically \code{2.22045e-15}).}
 }
 \value{
-A list of the following elements:
+A list with the following elements:
 \itemize{
 \item \code{'value'}: a matrix with the requested \eqn{Y}-quantiles \code{p} conditional on the requested \eqn{X}-values in \code{X}, for all combinations of \code{p} (rows) and \code{X} (columns).
 \item \code{'quantiles'} (possibly \code{NULL}): an array with the revisability quantiles (3rd dimension of the array) for the quantiles of the \code{'value'} element.
 \item \code{'samples'} (possibly \code{NULL}): an array with the revisability samples (3rd dimension of the array) for such quantiles.
 \item \code{'Y'}, \code{'X'} \code{'tails'}: copies of the \code{Y}, \code{X}, \code{tails} arguments.
-\item \code{'K'}: name of the "prova_K" (knowledge) object used in the calculation.
+\item \code{'K'}: name of the "K" object used in the calculation.
 }
 }
 \description{
 Calculate the quantiles of posterior probabilities and posterior conditional probabilities. Output the revisability of such quantiles if more training data were available.
 }
 \details{
-This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the revisability of those quantiles if more learning data were provided. It is somewhat analogous to the \code{qxxx}-variants of \link[stats:Distributions]{R distribution functions}. The revisability can be expressed in the form of quantiles, samples, or both, as in the \code{\link[=Pr]{Pr()}} function. If several joint values are given for the probability levels and for \code{X}, the function creates a 2D grid of results for all possible combinations of the given probability levels and \code{X} values. Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails}.
+This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the revisability of those quantiles if more learning data were provided. It is somewhat analogous to the \code{qxxx}-variants of \link[stats:Distributions]{R distribution functions}.
 
-If \code{qPr()} is called with three unnamed arguments, \code{qPr(..., ..., ...)}, then it is interpreted as \code{qPr(p = ..., Yname = ..., K = ...)}.
+The revisability can be expressed in the form of quantiles, samples, or both, as in the \code{\link[=Pr]{Pr()}} function. If several joint values are given for the probability levels and for \code{X}, the function creates a 2D grid of results for all possible combinations of the given probability levels and \code{X} values.
+
+Each variate in the argument \code{X} can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument \code{tails} (see \emph{Tail probabilities} in the \code{\link[=Pr]{Pr()}} documentation).
+
+A default value for the \verb{K = } argument can be set (and unset) with \code{useK()}. When this is done, the \verb{K = } argument may be omitted, saving a lot of \code{K = ...}-typing in this and other functions.
+
+Therefore if \code{qPr()} is called with two unnamed arguments, \code{qPr(..., ...)}, then it is interpreted as \code{qPr(p = ..., Yname = ...)}, with \code{X = NA} and the default \verb{K = } argument set by \code{useK()}. If it is called with three unnamed arguments, then it is interpreted as \code{qPr(p = ..., Yname = ..., X = ...)}, with the default \verb{K = } argument set by \code{useK()}. In order to specify \code{p}, \code{Yname}, and \code{K} without naming the arguments, the form \code{qPr(..., ..., NA, ...)} must be used, explicitly giving \code{X} as third argument.
 }
 \examples{
 ### WARNING: the following examples, if run, might even take a minute or more.
 
 \donttest{
-## Use the example "prova_K" (knowledge) object 'Kexample'
+## Use the example "K" object 'Kexample'
 ## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
 
@@ -83,14 +97,14 @@ If \code{qPr()} is called with three unnamed arguments, \code{qPr(..., ..., ...)
 ## Calculate the 25\%-, 50\%-, and 75\%-quantiles for the variate "bill length",
 ## that is, the values of "bill length" having such cumulative probabilities:
 
-quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', Kexample)
+quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', NA, Kexample)
 
 ## display the quantile values
 quants$value
 
 ## verify these values, within numerical error, using Pr():
-probs <- Pr(data.frame(bill_len = c(quants$value)), Kexample,
-  tails = list(bill_len = -1))
+probs <- Pr(data.frame(bill_len = c(quants$value)), NA, Kexample,
+  tails = list(bill_len = '<='))
 probs$value
 
 ## display the revisability about the quantiles
@@ -100,15 +114,21 @@ quants$quantiles
 ## ## Example 2:
 ## Calculate the 25\%-, 50\%-, and 75\%-quantiles for the variate "bill length",
 ## for the subpopulation of species 'Adelie':
-quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', data.frame(species = 'Adelie'),
+quants <- qPr(
+  c(0.25, 0.5, 0.75),
+  'bill_len',
+  data.frame(species = 'Adelie'),
   Kexample)
 
 ## display the quantile values
 quants$value
 
 ## verify these values, within numerical error, using Pr():
-probs <- Pr(data.frame(bill_len = c(quants$value)),
-  data.frame(species = 'Adelie'), Kexample, tails = list(bill_len = -1))
+probs <- Pr(
+  data.frame(bill_len = c(quants$value)),
+  data.frame(species = 'Adelie'),
+  Kexample,
+  tails = list(bill_len = '<='))
 probs$value
 }
 
@@ -119,10 +139,14 @@ probs$value
 }
 }
 \seealso{
-\code{\link[=learn]{learn()}}, which generates the "prova_K" (knowledge) objects required by \code{qPr()}.
+\code{\link[=learn]{learn()}}, to generate "K" objects required by \code{qPr()}.
+
+\code{\link[=useK]{useK()}} to set a "K" object as default in all \verb{K = } arguments.
 
 \code{\link[=Pr]{Pr()}} to calculate joint and conditional probabilities.
 
 \code{\link[=rPr]{rPr()}} to generate datapoints.
+
+\link{Kexample} an example "K" object included with \strong{Prova}.
 }
 \concept{probability}

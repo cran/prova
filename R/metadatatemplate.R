@@ -15,8 +15,6 @@
 #' Default `TRUE`.
 #' @param verbose Logical: output heuristics for each variate? Default `TRUE`.
 #'
-#' @return A preliminary [data frame][base::data.frame()] containing the metadata, [invisibly][base::invisible()] if `file = NULL`. If argument `file` is a character, a preliminary metadata file is also created with that name or path.
-#'
 #' @section Metadata information and format:
 #'
 #' In order to correctly learn from a dataset, the [learn()] function needs information that is not contained in the data themeselves; that is, it needs *meta*data. Metadata are provided either as a `csv` file or as a [base::data.frame()].
@@ -39,7 +37,7 @@
 #'
 #' - A *nominal* (also called *categorical*) variate has a discrete, finite number of possible values which have no intrinsic ordering. Examples could be a variate related to colour, with values "red", "green", "blue", and so on; or a variate related to cat breeds, with values "Siamese", "Abyssinian", "Persian", and so on. The possible values of the variate must be given in the fields `V1`, `V2`, and so on. It is important to include values that are possible but are *not* present in the dataset. A variate having only two possible values (binary variate), for example "yes" and "no", can be specified as nominal.
 #'
-#' - An *ordinal* variate has a discrete, finite number of possible values which do have an intrinsic ordering. Examples could be a Likert-scaled variate for the results of a survey, with values "very dissatisfied", "dissatisfied", "satisfied", "very satisfied"; or a variate related to the levels of some quantities, with values "low", "medium", "high"; or a variate having a numeric scale with values from 1 to 10. Whether a variate is nominal or ordinal often depends on the context. The possible values of the variate but be given in either one (but not both) or two ways: (1) in the fields `V1`, `V2`, ..., as for nominal variates; (2) as the fields `domainmin`, `domainmax`, `datastep`. Option (2) only works with numeric, equally spaced values: it assumes that the first value is `domainmin`, the second is `domainmin`+`datastep`, the third is `domainmin`+2*`datastep`, and so on up to the last value, `domainmax`.
+#' - An *ordinal* variate has a discrete, finite number of possible values which do have an intrinsic ordering. Examples could be a Likert-scaled variate for the results of a survey, with values "very dissatisfied", "dissatisfied", "satisfied", "very satisfied"; or a variate related to the levels of some quantities, with values "low", "medium", "high"; or a variate having a numeric scale with values from 1 to 10. Whether a variate is nominal or ordinal often depends on the context. The possible values of the variate must be given in either (but not both) or two ways: (1) in the fields `V1`, `V2`, ..., as for nominal variates; (2) as the fields `domainmin`, `domainmax`, `datastep`. Option (2) only works with numeric, equally spaced values: it assumes that the first value is `domainmin`, the second is `domainmin`+`datastep`, the third is `domainmin`+2*`datastep`, and so on up to the last value, `domainmax`. A naturally *integer* variate (for example "number of children" or "number of hospital visits", but not "age", which is actually a naturally continuous variate, just rounded) should be treated as ordinal.
 #'
 #' - A *continuous* variate has a continuum of values with an intrinsic ordering. Examples could be a variate related to the width of an object; or to the age of a person; or one coordinate of an object in a particular reference system. A continuous variate requires specification of the fields `domainmin`, `domainmax`, `datastep`, `minincluded`, `maxincluded`. Some naturally continuous variates are often rounded to a given precision; for instance, the age of a person might be reported as rounded to the nearest year (25 years, 26 years, and so on); or the length of an object might be reported to the nearest centimetre (1 m, 1.01 m, 1.02 m, and so on). The minimum distance between such rounded values **must** be reported in the `datastep` field; this would be `1` in the age example and `0.01` in the length example above. See below for further explanation of why reporting such rounding is important.
 #'
@@ -52,12 +50,10 @@
 #' **`minincluded`**, **`maxincluded`**: Whether the minimum (`domainmin`) and maximum(`domainmax`) values of a *continuous* variate can really appear in the data or not. Possible values are `true` (or `t` or `yes`) or `false` (or `f`, `no`, or an empty field); upper- or lower-case is irrelevant. Here are some examples about the meaning of these fields. (a) A *censored* variate has values larger than a given amount all grouped together, and similarly for values smaller than a given amount; for example, the "age" variate in a dataset might group all ages under 18 into a value "18 or less", and all those above 67 into "67 or more". In this case, "18" will go into the `domainmin` field, and `minincluded` must be set to `true`; likewise "67" will go into the `domainmax` field, and `maxincluded` must be set to `true`. (b) A continuous *unrounded* variate such as temperature has 0 as a minimum possible value `domainmin`, but this value itself is physically impossible and can never appear in data; in this case `minincluded` is empty (or set to `false` or `no`). Note that if `domainmin` is minus-infinity (empty value in the metadata file), then `minincluded` is automatically empty (that is, `false`), and similarly for `maxincluded` if `domainmax` is infinity.
 #'
 #'
-## #' @section Necessity of metadata:
-## #'
-## #' To be written.
+#' @return A preliminary [data frame][base::data.frame()] containing the metadata, [invisibly][base::invisible()] if `file = NULL`. If argument `file` is a character, a preliminary metadata file is also created with that name or path.
 #'
 #' @seealso
-#' [learn()], which generates the information necessary to calculate posterior probabilities, based on data and metadata.
+#' [learn()], to generate the information necessary to calculate posterior probabilities, based on data and metadata.
 #'
 #' @examples
 #' ## Create a preliminary data frame of metadata for the `penguins` dataset

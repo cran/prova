@@ -3,18 +3,51 @@
 #' @description
 #' Compute the posterior joint probability distribution of the variates conditional on the given data, by means of Markov-chain Monte Carlo, using the package **Nimble**.
 #'
+#' @param data A dataset, given as a [base::data.frame()] or as a file path to a CSV file. If missing or `NULL`, then the prior probability distribution is calculated.
+#' @param metadata [metadata] about the dataset's variates, given either as a [data frame][base::data.frame()] or as a file path to a CSV file.
+#' @param auxdata An *additional*, larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but is used to help estimate some hyperparameters. Note that the `auxdata` and `data` datasets should *not* have datapoints in common.
+#' @param outputdir `NULL` (default) or `NA` or character: path to folder where output information and diagnostics should be saved. If `NULL`, a directory is created in the temporary-directory space given by [base::tempdir()]. If `NA`, a directory is created in the current working directory given by [base::getwd()]. If character, this is taken to be the output directory; it should of course be writable by the user.
+#' @param valueisK Logical or `NULL`: should the `VALUE` returned be the `K`nowledge object containing the results from the Monte Carlo computation? Default `TRUE`. If `FALSE`, then `VALUE` is the output directory name. If `NULL`, then `VALUE` is `NULL`.
+#' @param nsamples Integer, default 3600: number of desired, *approximately independent* Monte Carlo samples. If this argument is changed, the user is also required to explicitly give either `nchains` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
+#' @param nchains Integer, default 8: number of Monte Carlo chains. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
+#' @param nsamplesperchain Integer, default 450: number of *approximately independent* Monte Carlo samples per chain. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nchains`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
+#' @param parallel One of the following values:
+#' - A "cluster" object previously created with [parallel::makeCluster()].
+#' - Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
+#' - `FALSE`: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
+#' - `TRUE` (default): use the cluster that was set as default with [parallel::setDefaultCluster()]; if no such object exists, then generate a cluster with as many nodes as in the [option][base::getOption()] "cl.cores"; if this option is unset, then use 2 nodes.
+#' @param seed Integer or `NULL` (default): use this seed for the random number generator. If `NULL`, do not set the seed.
+#' @param cleanup Logical, default `TRUE`: remove diagnostic files at the end of the computation?
+#' @param appendinfo Logical, default `TRUE`: append information about number of variates ('V'), number of data points ('D'), number of Monte Carlo samples ('S'), and timestamp, to the name of the output directory `outputdir`? The appended string has the format 'Vn_Dn_Sn_YYMMDDTHHMMSS'.
+#' @param subsampledata Integer or `NULL` (default): if integer, use only that many datapoints from the original dataset in the `data` argument.
+#' @param prior Logical: Calculate the prior distribution? Default is `FALSE` unless `data` argument is missing or `NULL`.
+#' @param startupMCiterations Integer, default 3600: number of initial Monte Carlo iterations.
+#' @param minMCiterations Integer, default 0: minimum number of Monte Carlo iterations to be doneby a chain.
+#' @param maxMCiterations Integer, default `Inf`: Do at most this many Monte Carlo iterations per chain.
+#' @param maxhours Numeric, default `Inf`: approximate time limit, in hours, for the Monte Carlo computation to last.
+#' @param ncheckpoints Integer or `NULL`, default 12: number of datapoints (per chain) to use for checking when the Monte Carlo computation should end. If `NULL`, this is equal to number of variates + 2. If Inf, use all datapoints.
+#' @param maxrelMCSE Numeric positive, default `+Inf`: desired maximal *relative Monte Carlo Standard Error* of calculated probabilities. The default `+Inf` means that `minESS` is used instead. `maxrelMCSE` is related to `minESS` by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.
+#' @param minESS Numeric positive or `NULL`, default 450: desired minimal Monte Carlo *Expected Sample Size*. If `NULL`, it is equal to the final `nsamplesperchain`. `minESS` is related to `maxrelMCSE` by \eqn{\mathrm{minESS} = 1/\mathrm{maxrelMCSE}^2 - \mathrm{initES}}.
+#' @param initES Numeric positive, default 8: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.
+#' @param thinning Integer or `NULL` (default): thin out the Monte Carlo samples by this value. If `NULL`: let the diagnostics decide the thinning value.
+#' @param verbose Logical, default `TRUE`: output the progress also to terminal? If `FALSE`, the progress is outputted only to the file `'main.out'` in the `outputdir` directory.
+#' @param plottraces Logical, default `TRUE`: save plots of the Monte Carlo traces of diagnostic values?
+#' @param showKtraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the K parameter?
+#' @param showAlphatraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the Alpha parameter?
+#' @param hyperparams List: hyperparameters of the hyperprior; see values in "Usage".
+#'
 #' @details
 #' To use this function, the package [**Nimble**](https://cran.r-project.org/package=nimble) needs to be installed.
 #'
 #' This function takes as main inputs a set of data and metadata, and computes the full joint probability distribution for new data, including its "revisability". From this full joint distribution any other distributions of interest can subsequently be computed; see [Pr()] and related functions. This computation can also be interpreted as an estimation of the full joint frequency distribution of the variates in the *whole population*, beyond the sample data, together with its uncertainty. The computation allows for the use of datapoints with partially missing variables: imputation is automatically made. This imputation is *principled*, made according to the rules of probability theory.
 #'
-#' The output is a "prova_K" (knowledge) object, typically saved in a `K.rds` file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
+#' The output is a "K" (more precisely "prova_K") object, typically saved in a `K.rds` file, which is used in all subsequent probabilistic computations. Other information about the computation is provided in logs and plots, saved in a directory specified by the user.
 #'
 #' See `vignette('intro')` for introductory examples.
 #'
 #' The computation is "non-parametric": probability or frequency distributions are not assumed to be Gaussian or of any other specific shape; no "model" is assumed. The mathematical representation of the space of joint frequency distributions follows ideas of Dunson & Bhattacharya (2011); see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details.
 #'
-#' The computation is done via Markov-chain Monte Carlo, using the package **Nimble**. "Convergence" of the Monte Carlo computation is automatically assessed with methods described in Vehtari & al. (2021) and Kwon & al. (2025); see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details. The default values for convergence require that all of the following three conditions be fulilled:
+#' The computation is done via Markov-chain Monte Carlo, using the package **Nimble**. "Convergence" of the Monte Carlo computation is automatically assessed with methods similar to those described in Vehtari & al. (2021), Kwon & al. (2025), Flegal & al (2008) <doi:10.1214/08-STS257>, Jones & al. (2006): <doi:10.1198/016214506000000492>; see [technical manual](https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf) for details. The default values for convergence require that all of the following three conditions be fulilled:
 #'
 #' - The computation's numerical error (Monte-Carlo Standard Error) for the posterior probability must be smaller than 4.7% of the standard deviation of the posterior's variability.
 #'  - The computation's numerical error for the 0.055- and 0.945-percentiles of the posterior's variability should be smaller than 4.7% of the distance between them.
@@ -43,50 +76,19 @@
 #'
 #' with such a call, the file 'learnoutput.out' will contain information about how the computation is proceeding and the estimated end time.
 #'
-#' @param data A dataset, given as a [base::data.frame()] or as a file path to a CSV file. If missing or `NULL`, then the prior probability distribution is calculated.
-#' @param metadata [metadata] about the dataset's variates, given either as a [data frame][base::data.frame()] or as a file path to a CSV file.
-#' @param auxdata An *additional*, larger dataset, given as a data frame or as a file path to a CSV file. Such a dataset would be too large to use in the Monte Carlo sampling, but is used to help estimate some hyperparameters. Note that the `auxdata` and `data` datasets should *not* have datapoints in common.
-#' @param outputdir `NULL` (default) or `NA` or character: path to folder where output information and diagnostics should be saved. If `NULL`, a directory is created in the temporary-directory space given by [base::tempdir()]. If `NA`, a directory is created in the current working directory given by [base::getwd()]. If character, this is taken to be the output directory; it should of course be writable by the user.
-#' @param valueisK Logical or `NULL`: should the `VALUE` returned be the `K`nowledge object containing the results from the Monte Carlo computation? Default `TRUE`. If `FALSE`, then `VALUE` is the output directory name. If `NULL`, then `VALUE` is `NULL`.
-#' @param nsamples Integer, default 3600: number of desired, *approximately independent* Monte Carlo samples. If this argument is changed, the user is also required to explicitly give either `nchains` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
-#' @param nchains Integer, default 8: number of Monte Carlo chains. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nsamplesperchain`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
-#' @param nsamplesperchain Integer, default 450: number of *approximately independent* Monte Carlo samples per chain. If this argument is changed, the user is also required to explicitly give either `nsamples` or `nchains`, but not both; the remaining third argument is determined from \eqn{\mathrm{nsamples} = \mathrm{nchains} \times \mathrm{nsamplesperchain}}.
-#' @param parallel One of the following values:
-#' - A "cluster" object previously created with [parallel::makeCluster()].
-#' - Positive integer: create a parallel cluster with this number of nodes (it will be stopped at the end).
-#' - `FALSE`: do not use clusters (one node is still generated, in order to eliminate temporary objects from the computation).
-#' - `TRUE` (default): use the cluster that was set as default with [parallel::setDefaultCluster()]; if no such object exists, then generate a cluster with as many nodes as in the [option][base::getOption()] "cl.cores"; if this option is unset, then use 2 nodes.
-#' @param seed Integer or `NULL` (default): use this seed for the random number generator. If `NULL`, do not set the seed.
-#' @param cleanup Logical, default `TRUE`: remove diagnostic files at the end of the computation?
-#' @param appendinfo Logical, default `TRUE`: append information about number of variates ('V'), number of data points ('D'), number of Monte Carlo samples ('S'), and timestamp, to the name of the output directory `outputdir`? The appended string has the format 'Vn_Dn_Sn_YYMMDDTHHMMSS'.
-#' @param subsampledata Integer or `NULL` (default): if integer, use only that many datapoints from the original dataset in the `data` argument.
-#' @param prior Logical: Calculate the prior distribution? Default is `FALSE` unless `data` argument is missing or `NULL`.
-#' @param startupMCiterations Integer, default 3600: number of initial Monte Carlo iterations.
-#' @param minMCiterations Integer, default 0: minimum number of Monte Carlo iterations to be doneby a chain.
-#' @param maxMCiterations Integer, default `Inf`: Do at most this many Monte Carlo iterations per chain.
-#' @param maxhours Numeric, default `Inf`: approximate time limit, in hours, for the Monte Carlo computation to last.
-#' @param ncheckpoints Integer or `NULL`, default 12: number of datapoints (per chain) to use for checking when the Monte Carlo computation should end. If `NULL`, this is equal to number of variates + 2. If Inf, use all datapoints.
-#' @param maxrelMCSE Numeric positive, default `+Inf`: desired maximal *relative Monte Carlo Standard Error* of calculated probabilities. The default `+Inf` means that `minESS` is used instead. `maxrelMCSE` is related to `minESS` by \eqn{\mathrm{maxrelMCSE} = 1/\sqrt{\mathrm{minESS} + \mathrm{initES}}}.
-#' @param minESS Numeric positive or `NULL`, default 450: desired minimal Monte Carlo *Expected Sample Size*. If `NULL`, it is equal to the final `nsamplesperchain`. `minESS` is related to `maxrelMCSE` by \eqn{\mathrm{minESS} = 1/\mathrm{maxrelMCSE}^2 - \mathrm{initES}}.
-#' @param initES Numeric positive, default 8: number of initial "burn-in" samples, separated by the Expected Sample Size, to be discarded. Note that the Monte Carlo chain typically starts in a high-probability region, so there is no reason to discard many initial samples.
-#' @param thinning Integer or `NULL` (default): thin out the Monte Carlo samples by this value. If `NULL`: let the diagnostics decide the thinning value.
-#' @param verbose Logical, default `TRUE`: output the progress to terminal? If `FALSE`, the progress is outputted to the file `'main.out'` in the `outputdir` directory.
-#' @param plottraces Logical, default `TRUE`: save plots of the Monte Carlo traces of diagnostic values?
-#' @param showKtraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the K parameter?
-#' @param showAlphatraces Logical, default `FALSE`: save plots of the Monte Carlo traces of the Alpha parameter?
-#' @param hyperparams List: hyperparameters of the hyperprior; see values in "Usage".
+#' @returns A "K" (more precisely "prova_K") object, or name of directory containing such an object and other output files, or `NULL`, depending on argument `valueisK`.
 #'
-#' @returns A "prova_K" (knowledge) object, or name of directory containing such an object and other output files, or `NULL`, depending on argument `valueisK`.
-#'
-#' `learn()` saves several files in a directory. By default this output directory is a temporary directory within the one used by [base::tempdir()], but an alternative one can be chosen with the argument `outputdir =`. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
+#' `learn()` saves several files in a directory. By default this output directory is a temporary directory within the one used by [base::tempdir()], but an alternative one can be chosen with the argument `outputdir = `. The output directory contain several diagnostic files for the Monte Carlo computation; in particular:
 #'
 #' - `MCtraces.pdf`: shows several trace plots of the Monte Carlo sampling; the corresponding data are in the file `MCtraces.rds`.
 #' - `plotsamples_learn.pdf`, `plotquantiles_learn.pdf`: show the marginal posterior distributions of each individual variate, together with their "revisability" (as samples or quantiles).
-#' - `log-1.out`, `log-2.out`, ... one for each parallel core; report the progress of each parallel Monte Carlo computation and notes about it.
+#' - `log-1.out`, `log-2.out`, ... one for each parallel node; report the progress of each parallel Monte Carlo computation and notes about it.
 #' - `rng_seed.rds`: the state of the pseudorandom seed (see [base::Random]) when `learn()` was called.
 #' - `metadata.csv`: a copy of the metadata.
 #'
-#' It is recommended that you give an explicit argument `outputdir =` and save the directory with the files above for future reference. In particular, the `MCtraces.pdf` plot and `MCtraces.rds` data can be useful to report Monte Carlo convergence in any work of yours that used **Prova**.
+#' It is recommended that an explicit argument `outputdir = ` be given, so as to save the directory with the files above for future reference. In particular, the `MCtraces.pdf` plot and `MCtraces.rds` data can be useful to report Monte Carlo convergence in any work that used **Prova**.
+#'
+#' During operation, computation progress and estimated end times for each node's computation are outputted to the file `'main.out'` in the output directory, and also to the console if argument `verbose` is `TRUE`. Note that the estimated end times are very approximate and often quite conservative.
 #'
 #' @references
 #'
@@ -114,6 +116,8 @@
 #' - Kwon & al. (2025): *MCMC stopping rules in latent variable modelling*, <doi:10.1111/bmsp.12357>.
 #' - Vehtari & al. (2021): *Rank-normalization, folding, and localization: an improved R-hat for assessing convergence of MCMC*, <doi:10.1214/20-BA1221>.
 #' - Roy (2020): *Convergence diagnostics for Markov chain Monte Carlo*, <doi:10.1146/annurev-statistics-031219-041300>.
+#' - Flegal & al. (2008): *Markov chain Monte Carlo: can we trust the third significant figure?*, <doi:10.1214/08-STS257>.
+#' - Jones & al. (2006): *Fixed-width output analysis for Markov chain Monte Carlo*, <doi:10.1198/016214506000000492>.
 #' - Gilks & al. (1998): *Markov Chain Monte Carlo in Practice*, Chapman & Hall/CRC <doi:10.1201/b14835>.
 #' - D. J. C. MacKay (2005): *Information Theory, Inference, and Learning Algorithms*, Cambridge University Press <https://www.inference.org.uk/itila/book.html>.
 #' - Porta Mana <https://github.com/pglpm/prova/raw/main/development/manual/pglpm2024-bayes_nonparam.pdf>.
@@ -121,6 +125,8 @@
 #'
 #' @seealso
 #' [metadatatemplate()] to help writing metadata files.
+#'
+#' [useK()] to set a "K" (more precisely "prova_K") object generated by `learn()` as default in all subsequent `K = ` arguments.
 #'
 #' [Pr()] to calculate probabilities, and [qPr()] to calculate quantiles, given the data processed by `learn()`.
 #'
@@ -311,7 +317,7 @@ learn <- function(
 #### Argument-consistency checks
 ##################################################
 
-#### Consistency checks for numbers of samples, chains, cores
+#### Consistency checks for numbers of samples, chains, nodes
     ## The defaults are 3600 samples from 8 chains, 450 samples per chain
     ## The user can choose any two
     ## nsamples = nchains * nsamplesperchain
@@ -353,8 +359,8 @@ learn <- function(
     ## Parallellisation is done in any case,
     ## so that objects from the Monte Carlo simulation are not left in memory.
 
-    ## Number of cores is reduced if larger than 'nchains':
-    ## doesn't make sense to have more cores than chains
+    ## Number of nodes is reduced if larger than 'nchains':
+    ## doesn't make sense to have more nodes than chains
     closeexit <- FALSE
     if (inherits(parallel, "cluster")){
         ## user provides a cluster object
@@ -364,10 +370,10 @@ learn <- function(
         cl <- cl0[seq_len(ncores)]
     } else if (isTRUE(parallel)) {
         ## user wants us to check for or register a parallel backend
-        ## and to choose number of cores
+        ## and to choose number of nodes
         cl0 <- parallel::getDefaultCluster()
         if(is.null(cl0)){
-            ncores <- min(nchains, getOption("cl.cores", 2))
+            ncores <- min(nchains, getOption('cl.cores', 2))
             cl0 <- cl <- parallel::makeCluster(ncores)
             closeexit <- TRUE
             predirmsgs <- c(predirmsgs, list(
@@ -384,7 +390,7 @@ learn <- function(
         closeexit <- TRUE
     } else if (is.numeric(parallel) &&
                    is.finite(parallel) && parallel >= 1) {
-        ## user wants us to register 'parallel' # of cores
+        ## user wants us to register 'parallel' number of nodes
         ncores <- min(nchains, parallel)
         cl0 <- cl <- parallel::makeCluster(ncores)
         closeexit <- TRUE
@@ -1070,12 +1076,12 @@ learn <- function(
     print2user('in a space of ', samplespacedims, ' (effectively ',
         samplespacedims + samplespacexdims, ') dimensions.')
 
-    print2user('Using ', ncores, ' cores: ',
+    print2user('Using ', ncores, ' nodes: ',
         nsamplesperchain, ' samples per chain, max ',
-        minchainspercore + (coreswithextrachain > 0), ' chains per core.')
+        minchainspercore + (coreswithextrachain > 0), ' chains per node.')
     print2user('Requested:   ESS ', round(minESS),
         '   rel.MCSE ', signif(maxrelMCSE, 3), '.')
-    print2user('Core logs are being saved in individual files.')
+    print2user('Node logs are being saved in individual files.')
 
     ## function  to format printing of time
     printtimediff <- function(tim) {
@@ -1138,6 +1144,7 @@ learn <- function(
         family = family,
         mainlog = mainlog,
         verbose = verbose,
+        ncores = ncores,
         ##
         chunk.size = NULL
     )
@@ -1237,7 +1244,9 @@ learn <- function(
 #### Save all final parameters together with some aux metadata in one file
     K <- c(mcsamples, list(
         auxmetadata = auxmetadata,
-        auxinfo = list(
+        info = list(
+            metadata = metadata,
+            nMCsamples = ncol(mcsamples$W),
             nchains = nchains,
             npoints = npoints,
             hyperparams = hyperparams,
@@ -1255,9 +1264,7 @@ learn <- function(
     )
 
     ## This is to delete the last 'estimated end time'
-    print2user('\r                                                               \n')
-
-    print2user('Finished Monte Carlo sampling.')
+    print2user('\nFinished Monte Carlo sampling.')
 
     print2user(
         'Highest number of Monte Carlo iterations across chains: ',
@@ -1297,10 +1304,11 @@ learn <- function(
     print2user('\nChecking test data\n(',
         paste0('#', testdata$pointsid, collapse = ' '), '):')
 
-    oktraces <- .Pcheckpoints(
+    ## .Pcheckpoints() outputs probabilities
+    oktraces <- log(.Pcheckpoints(
         testdata = testdata,
         K = K
-    )
+    ))
 
     ## Substitute variances for standard deviations
     if(!is.null(K$Rvar)){
@@ -1323,7 +1331,7 @@ learn <- function(
 
 
     oktraces <- cbind(
-        exp(rowMeans(log(oktraces), na.rm = TRUE)), # geometric mean
+        rowMeans(oktraces, na.rm = TRUE), # geometric mean
         oktraces
     )
 
@@ -1342,7 +1350,7 @@ learn <- function(
 
     N <- nrow(oktraces)
 
-    jointdiagn <- apply(oktraces, 2, function(atrace) {
+    JD <- apply(oktraces, 2, function(atrace) {
 ### same as within cores
 
         ## Calculate empirical quantiles of the vector of MC samples,
@@ -1356,21 +1364,27 @@ learn <- function(
 
         ## Calculate credibility intervals (proxy for MCSE)
         ## for the empirical quantiles above
-        ## as in Vehtari et al. 2021
         temp <- .funMCEQ(x = atrace, prob = c(Qlo, Qhi), Qpair = Qerror)
         wXlo <- temp[2, 1] - temp[1, 1]
         wXhi <- temp[2, 2] - temp[1, 2]
 
+        ## ## For each monitored point,
+        ## ## transform its posterior samples to normalized ranks,
+        ## ## then calculate the ESSs of their means,
+        ## ## as in Vehtari et al. 2021
+        ## ## and Blom 1958 sect 6.10 eqn (6.10.5)
+        ## ## (alternative (6.10.3) gives roughly same results
+        ## ## but is computationally slightly more expensive)
+        ## essnrmean <- .funESS3(qnorm(
+        ## (rank(atrace, na.last = NA, ties.method = 'average') - 0.5) / N
+        ## ))
+        ## mcsemean <- 1 / sqrt(essnrmean)
+
         ## For each monitored point,
-        ## transform its posterior samples to normalized ranks,
-        ## then calculate the ESSs of their means,
-        ## as in Vehtari et al. 2021
-        ## and Blom 1958 sect 6.10 eqn (6.10.5)
-        ## (alternative (6.10.3) gives roughly same results
-        ## but is computationally slightly more expensive)
-        essnrmean <- .funESS3(qnorm(
-        (rank(atrace, na.last = NA, ties.method = 'average') - 0.5) / N
-        ))
+        ## calculate the ESSs of their means,
+        ## using batch-means method
+        mcsemean <- .funMCSEBM(atrace) / sd(atrace)
+        essnrmean <- 1 / (mcsemean^2)
 
         ## We check the relative MCSE of the following quantities:
         ## - the mean of the MC samples, transformed to normalized ranks
@@ -1380,24 +1394,37 @@ learn <- function(
         ## (representing the "long-run frequency")
         ## and of its 'Qlo'- and 'Qhi'-quantiles
         ## (representing the uncertainty about the freq. estimate)
-        relmcse <- c(1 / sqrt(essnrmean), wXlo / qwidth, wXhi / qwidth)
+        relmcse <- c(mcsemean, wXlo / qwidth, wXhi / qwidth)
 
         autothinning <- N * max(relmcse)^2
 
 ### same as within cores
 
-        c(max(relmcse[-1]), essnrmean, autothinning, qwidth)
+        c(
+            maxrelmcse = max(relmcse[-1]),
+            essnrmean = essnrmean,
+            autothinning = autothinning,
+            qwidth = qwidth,
+            maxwX = max(wXhi, wXlo),
+            mcsemean = mcsemean,
+            MCSE = mcsemean * sd(atrace)
+        )
     })
 
     ## Output available diagnostics
     toprint <- list(
-        'rel. quantile error' = jointdiagn[1, ],
-        'ESS' = jointdiagn[2, ],
-        'needed thinning' = jointdiagn[3, ],
-        'average' = colMeans(oktraces),
-        'quantile width' = jointdiagn[4, ]
+        'max abs. quantile error' = JD['maxwX', ],
+        'quantile width' = JD['qwidth', ],
+        'max rel. quantile error' = JD['maxrelmcse', ],
+        'min ESS from rel. qt. error' = 1/(JD['maxrelmcse', ]^2),
+        'MCSE' = JD['MCSE', ],
+        'rel. MCSE' = JD['mcsemean', ],
+        'quantl-rel. MCSE' = JD['MCSE', ] / JD['qwidth', ],
+        'ESS' = JD['essnrmean', ],
+        'needed thinning' = JD['autothinning', ],
+        'log-average' = colMeans(oktraces)
     )
-    K$auxinfo <- c(K$auxinfo, toprint)
+    K$info <- c(K$info, toprint)
     class(K) <- 'prova_K'
     saveRDS(K,
         file = file.path(dirname, paste0('K', dashnameroot, '.rds'))
@@ -1428,23 +1455,21 @@ learn <- function(
         ## Do not join separate chains in the plot
         division <- (if(N > nchains) nchains else 1)
         pplot(
-            y = 10*log10(oktraces[is.finite(oktraces[, avar]), avar]),
+            y = 4.343 * (oktraces[is.finite(oktraces[, avar]), avar]),
+            ## 4.343 is 10/log(10)
             ## x = matrix(seq_len(nsamples), ncol = division),
             ## y = matrix(10*log10(oktraces[, avar]), ncol = division),
             type = 'l', lty = 1, col = 1,
             ## col = 1:6, # to evidence consecutive chains
             main = paste0('#', colnames(oktraces)[avar], ': ',
                 paste(
-                    names(toprint),
-                    sapply(toprint, function(xx){
-                        signif(xx[avar], 3)
-                    }),
+                    names(toprint[c('max rel. quantile error', 'ESS')]),
+                    sapply(toprint[c('max rel. quantile error', 'ESS')],
+                        function(xx){ signif(xx[avar], 3) }),
                     collapse = ' | ', sep = ': '
                 )),
             cex.main = 1.25,
-            ylab = paste0('log_F(#',
-                colnames(oktraces)[avar],
-                ')/dHart'),
+            ylab = paste0('log_F(testpoints)/dHart'),
             xlab = 'sample', family = family
             ## mar = c(NA, 6, NA, NA)
         )
@@ -1486,7 +1511,7 @@ learn <- function(
             difftime(headertimestart + MCtime, headertimestart, units = 'auto')
         ), '.',
         '\nMax total memory used: approx ', signif(totusedmem, 2), 'MB.',
-        '\nMax memory used per core: approx ', signif(maxusedmem, 2), 'MB.'
+        '\nMax memory used per node: approx ', signif(maxusedmem, 2), 'MB.'
     )
 
 #### Remove partial files if required
@@ -1524,6 +1549,7 @@ learn <- function(
 
 #' Worker function called by learn()
 #'
+#' @description
 #' This worker function is defined outside of learn() in order to avoid import of spurious objects into the parallel workers, and from the parallel workes into the main R session, with waste of memory.
 #'
 #' @import grDevices
@@ -1567,7 +1593,8 @@ learn <- function(
     printtimediff,
     family,
     mainlog,
-    verbose
+    verbose,
+    ncores
 ){
     ## Handles R CMD check:
     ## these are variables or functions handled in a special way by Nimble
@@ -1605,7 +1632,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     maincon <- file(mainlog, open = 'a')
     ## Restore sink in case of exit or error
     closecons <- function(){
-        ## Close output to core log files
+        ## Close output to node log files
         flush(outcon)
         sink(file = NULL, type = 'output')
         sink(file = NULL, type = 'message')
@@ -1616,7 +1643,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     }
     on.exit(closecons())
 
-    ## We need to send some messages to individual core-log files,
+    ## We need to send some messages to individual node-log files,
     ## others to the main log file (and to terminal if verbose = TRUE)
     ## This is done by changing output sink:
     if(verbose){
@@ -1629,7 +1656,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             sink(file = maincon, type = 'message')
             message(..., appendLF = FALSE)
             flush(maincon)
-            ## redirect to core log file
+            ## redirect to node log file
             sink(file = outcon, type = 'message')
         }
     }else{
@@ -1639,7 +1666,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             sink(file = maincon, type = 'message')
             message(..., appendLF = FALSE)
             flush(maincon)
-            ## redirect to core log file
+            ## redirect to node log file
             sink(file = outcon, type = 'message')
         }
     }
@@ -1648,7 +1675,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
 
     ## Timer
     headertimestart <- Sys.time()
-    cat('Log core', acore)
+    cat('Log node', acore)
     cat(' - Current time:',
         strftime(as.POSIXlt(headertimestart), '%Y-%m-%d %H:%M:%S'), '\n')
 
@@ -2926,17 +2953,22 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     headertime <- difftime(Sys.time(), headertimestart, units = 'secs')
 
 
-    ## Inform user that compilation is done, if core 1:
+    ## Inform user that compilation is done, if node 1:
     if (acore == 1) {
-        print2user(paste0('\rCompiled core ', acore, '. ',
+        print2user(paste0(
+            '\rCompiled node ', acore, '. ',
             'Number of samplers: ',
             length(confnimble$samplerExecutionOrder), '.             \n',
-            'Estimating remaining time, please be patient...'))
-    }
+            'Estimated end times, updated ',
+            format(Sys.time(), format='%Y-%m-%d %H:%M'), ':\n',
+            paste0('Node ', 1:ncores, ': estimating...\n', collapse = '')
+           ## , '\r\033[', ncores + 1, 'A\r'
+            ))
+    } else {Sys.sleep(1)}
 
     ## cat('Loop over chains')
 ##################################################
-#### LOOP OVER CHAINS (WITHIN ONE CORE)
+#### LOOP OVER CHAINS (WITHIN ONE NODE)
 ##################################################
     ## Start timer
     MCtimestart <- Sys.time()
@@ -2949,9 +2981,8 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
     stoppedchains <- 0L
     usedmem <- max(usedmem, sum(gc(full = TRUE)[,6])) #garbage collection
 
-#### LOOP OVER CHAINS IN CORE
+#### LOOP OVER CHAINS IN NODE
     nchainsperthiscore <- minchainspercore + (acore <= coreswithextrachain)
-    ## print2user(paste0('\ncore ',acore,': ',nchainsperthiscore,'\n'))
 
     for (achain in 1:nchainsperthiscore) {
 
@@ -2985,7 +3016,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
         flagnonfinite <- FALSE
         cat('\n###########################################################\nChain #',
             chainnumber,
-            '(chain', achain, 'of', nchainsperthiscore, 'for this core)\n'
+            '(chain', achain, 'of', nchainsperthiscore, 'for this node)\n'
         )
         ## Read data to be used in log-likelihood
         testdata <- readRDS(file = file.path(dirname,
@@ -3108,15 +3139,17 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             diagntime <- Sys.time()
             ##
 
-            ll <- .Pcheckpoints(
+            ## .Pcheckpoints() outputs probabilities
+            ll <- log(.Pcheckpoints(
                 testdata = testdata,
                 K = mcsamples
-            )
+            ))
 
             ll <- cbind(
-                exp(rowMeans(log(ll), na.rm = TRUE)), # geometric mean
+                rowMeans(ll, na.rm = TRUE), # geometric mean
                 ll
             )
+
             colnames(ll) <- c('gmean', testdata$pointsid)
 
             if(plottraces){
@@ -3179,21 +3212,27 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
 
             ## Calculate credibility intervals (proxy for MCSE)
             ## for the empirical quantiles above
-            ## as in Vehtari et al. 2021
             temp <- .funMCEQ(x = oktraces, prob = c(Qlo, Qhi), Qpair = Qerror)
             wXlo <- temp[2, 1] - temp[1, 1]
             wXhi <- temp[2, 2] - temp[1, 2]
 
+            ## ## For each monitored point,
+            ## ## transform its posterior samples to normalized ranks,
+            ## ## then calculate the ESSs of their means,
+            ## ## as in Vehtari et al. 2021
+            ## ## and Blom 1958 sect 6.10 eqn (6.10.5)
+            ## ## (alternative (6.10.3) gives roughly same results
+            ## ## but is computationally slightly more expensive)
+            ## essnrmean <- .funESS3(qnorm(
+            ## (rank(oktraces, na.last = NA, ties.method = 'average') - 0.5) / N
+            ## ))
+            ## mcsemean <- 1 / sqrt(essnrmean)
+
             ## For each monitored point,
-            ## transform its posterior samples to normalized ranks,
-            ## then calculate the ESSs of their means,
-            ## as in Vehtari et al. 2021
-            ## and Blom 1958 sect 6.10 eqn (6.10.5)
-            ## (alternative (6.10.3) gives roughly same results
-            ## but is computationally slightly more expensive)
-            essnrmean <- .funESS3(qnorm(
-            (rank(oktraces, na.last = NA, ties.method = 'average') - 0.5) / N
-            ))
+            ## calculate the ESSs of their means,
+            ## using batch-means method
+            mcsemean <- .funMCSEBM(oktraces) / sd(oktraces)
+            essnrmean <- 1 / (mcsemean^2)
 
             ## We check the relative MCSE of the following quantities:
             ## - the mean of the MC samples, transformed to normalized ranks
@@ -3203,18 +3242,22 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
             ## (representing the "long-run frequency")
             ## and of its 'Qlo'- and 'Qhi'-quantiles
             ## (representing the uncertainty about the freq. estimate)
-            relmcse <- c(1 / sqrt(essnrmean), wXlo / qwidth, wXhi / qwidth)
+            relmcse <- c(mcsemean, wXlo / qwidth, wXhi / qwidth)
 
             autothinning <- N * max(relmcse)^2
 
             ## Output available diagnostics
             toprint <- list(
-                'rel. quantile error' = max(relmcse[-1]),
-                'ESS from rel. qt. error' = (1/max(relmcse[-1]))^2,
+                'max abs. quantile error' = max(wXlo, wXhi),
+                'quantile width' = qwidth,
+                'max rel. quantile error' = max(relmcse[-1]),
+                'min ESS from rel. qt. error' = 1/(max(relmcse[-1])^2),
+                'MCSE' = mcsemean * sd(oktraces),
+                'rel. MCSE' = mcsemean,
+                'quantl-rel. MCSE' = mcsemean * sd(oktraces) / qwidth,
                 'ESS' = essnrmean,
                 'needed thinning' = autothinning,
-                'average' = mean(oktraces),
-                'quantile width' = qwidth
+                'log-average' = mean(oktraces)
             )
 
 ####
@@ -3317,7 +3360,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 subiter <- subiter + 1L
                 cat('\nChain #', chainnumber, '- chunk', subiter,
                     '(chain', achain, 'of', nchainsperthiscore,
-                    'for this core): increasing by', niter, '\n'
+                    'for this node): increasing by', niter, '\n'
                 )
             }
 
@@ -3352,7 +3395,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 legend(x = 'left', bty = 'n', cex = 0.75,
                     legend = c(
                         paste0('Chain ', chainnumber, ' - ',
-                            achain, ' of core ', acore),
+                            achain, ' of node ', acore),
                         ##
                         paste0('Test points ',
                             paste0('#', testdata$pointsid, collapse=' ')
@@ -3372,7 +3415,10 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                         },
                         if (flagll) {
                             'non-finite values in diagnostics'
-                        }
+                        },
+                        paste0(names(toprint), ': ',
+                            sapply(toprint, function(xx){ signif(xx, 3) })
+                        )
                     )
                 )
 
@@ -3383,21 +3429,13 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 ## on.exit(par(oldpar), add = TRUE)
 
                 for (avar in 1:ncol(traces)) {
+                    ## 4.343 is 10/log(10)
                     pplot(
-                        y = 10*log10(traces[is.finite(traces[, avar]), avar]),
+                        y = 4.343 * (traces[is.finite(traces[, avar]), avar]),
                         type = 'l', lty = 1, col = 1,
-                        main = paste0('#', colnames(traces)[avar], ': ',
-                            paste(
-                                names(toprint),
-                                sapply(toprint, function(xx){
-                                    signif(xx[avar], 3)
-                                }),
-                                collapse = ' | ', sep = ': '
-                            )),
+                        main = paste0('#', colnames(traces)[avar]),
                         cex.main = 1.25,
-                        ylab = paste0('log_F(#',
-                            colnames(traces)[avar],
-                            ')/dHart'),
+                        ylab = paste0('log_F(testpoints)/dHart'),
                         xlab = 'Monte Carlo sample',
                         family = family
                         ## mar = c(NA, 6, NA, NA)
@@ -3449,8 +3487,13 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
                 ( (nchainsperthiscore + (acore > coreswithextrachain) - fracchain) *
                       difftime(Sys.time(), MCtimestart) / fracchain )
             print2user(paste0(
-                '\rSampling. Core ', acore, ' estimated end time: ',
-                format(endTime, format='%Y-%m-%d %H:%M'), '   '
+                '\r\033[', ncores + 1, 'A',
+                '\rEstimated end times, updated ',
+                format(Sys.time(), format='%Y-%m-%d %H:%M'), ':\r',
+                '\033[', acore, 'B',
+                'Node ', acore, ': ',
+                format(endTime, format='%Y-%m-%d %H:%M'),
+                '\r\033[', ncores - acore + 1, 'B\r'
                 ))
 
             reset <- FALSE
@@ -3525,7 +3568,7 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
         maxusedcomponents <- max(maxusedcomponents, usedcomponents)
         maxiterations <- max(maxiterations, nitertot)
     }
-#### END LOOP OVER CHAINS (WITHIN ONE CORE)
+#### END LOOP OVER CHAINS (WITHIN ONE NODE)
 
     ##
     cat('\nCurrent time:', format(Sys.time(), '%Y-%m-%d %H:%M:%S'))
@@ -3534,13 +3577,18 @@ nimbleFunction <- sampler_BASE <- extractControlElement <- model <- target <- Nd
         printtimediff(difftime(Sys.time(), headertimestart, units = 'auto')),
         '\n')
 
-#### Inform user that this core has finished
-    ## ## timing text, for white spaces:
-    ## ## "Sampling. Core 2 estimated end time: xxxx-xx-xx xx:xx   "
-    print2user(paste0('\rCore ', acore,
-        ' finished.                                        \nSampling. Estimating remaining time...'))
+#### Inform user that this node has finished
+    print2user(paste0(
+        '\r\033[', ncores + 1, 'A',
+        '\rEstimated end times, updated ',
+        format(Sys.time(), format='%Y-%m-%d %H:%M'), ':\r',
+        '\033[', acore, 'B',
+        'Node ', acore, ': ',
+        'finished.        ',
+        '\r\033[', ncores - acore + 1, 'B\r'
+    ))
 
-    ## output information from a core,
+    ## output information from a node,
     ## passed to the originally calling process
     cbind(
         maxusedcomponents = maxusedcomponents,

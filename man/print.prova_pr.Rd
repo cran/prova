@@ -4,14 +4,12 @@
 \alias{print.prova_pr}
 \title{Print an object of class "prova_pr" (probability)}
 \usage{
-\method{print}{prova_pr}(x, elements = NULL, subset = NULL, digits = TRUE, edigits = 2, ...)
+\method{print}{prova_pr}(x, elements = NULL, digits = TRUE, edigits = 2, ...)
 }
 \arguments{
 \item{x}{Object of class "prova_pr" (probability), obtained with \code{\link[=Pr]{Pr()}}.}
 
 \item{elements}{character or integer vector, or \code{NULL} (default): elements of the "prova_pr" (probability) object to display. The syntax is the same as with \code{\link[base:Extract]{[}}. If \code{NULL}, the elements \code{'value'} and \code{'quantiles'} are displayed together in a special way.}
-
-\item{subset}{Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.}
 
 \item{digits}{positive integer or \code{NULL} or \code{TRUE} (default): minimal number of significant digits, see \code{\link[base:print.default]{base::print.default()}}. If value is \code{TRUE}, then the significant digits for elements \code{'value'} and \code{'quantiles'} are determined from their respective \code{'value.acc'} and \code{'quantiles.acc'} elements of the "prova_pr" (probability) object (see \code{\link[=Pr]{Pr()}}), according to the rules of the \emph{Guide to the expression of Uncertainty in Measurement}, keeping as many digits as given in parameter \code{edigits}; whereas \code{'samples'} elements uses \code{edigits} significant digits.}
 
@@ -26,7 +24,7 @@ Its \code{x} argument, \link[base:invisible]{invisibly}; see \code{\link[base:pr
 This \code{\link[base:print]{base::print()}} method is a utility to display selected elements of a "prova_pr" (probability) object obtained with \code{\link[=Pr]{Pr()}}; typically its posterior probabilies (element \code{'value'}) and their revisabilities (element \code{'quantiles'}). If the \code{Y} or \code{X} variates are joint variates, this method also allow to display only selected values of them. Singular probabilities, such as the probability of a censored value for a continuous variate, are indicated with an asterisk \code{*}.
 }
 \examples{
-## Use the "prova_K" (knowledge) object 'Kexample',
+## Use the "K" object 'Kexample',
 ## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
 
@@ -41,8 +39,9 @@ probs <- Pr(Y, X, Kexample)
 ## display the values and revisabilities of these probabilities
 print(probs)
 
-## diplay 'value' only, and only for the species value 'Gentoo'
-print(probs, elements = 'value', subset = list(species = 'Gentoo'))
+## display 'value' only,
+## use subset() to select only the value 'Gentoo' for species
+print(subset(probs, subsetY = (species == 'Gentoo')), elements = 'value')
 
 }
 \references{

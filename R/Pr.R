@@ -2,40 +2,16 @@
 #'
 #' @description Calculate posterior probabilities and probability densities, cumulative posterior probabilities, and mixtures thereof. Output the "revisability" of such probabilities if more training data were available, and the Monte Carlo Standard Error for the calculated posterior probabilities.
 #'
-#' @details This function calculates the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K)}, where \eqn{Y = y} and \eqn{X = x} are two (non overlapping) sets of joint variate values, inputted as [data frame][base::data.frame()] arguments `Y` and `X`, and \eqn{K} is the information in the data and metadata. It is somewhat analogous to the `dxxx`-variants and `pxxx`-variants of [R distribution functions][stats::Distributions]. If `X` is omitted or `NULL`, then the posterior probability \eqn{\mathrm{Pr}(Y = y \vert K)} is calculated.
-#'
-#' For some variates in `Y` or `X`, tail values can also be prescribed, so that this function calculates mixed probabilities such as \deqn{\mathrm{Pr}(Y_1 = y_1, Y_2 \le y_2, \dotsc \vert X_1 = x_1, X_2 \ge x_2, \dotsc, K)\ .} Tail values are inputted via the `'tails'` argument; see "Usage".
-#'
-#' If `Pr()` is called with two unnamed arguments, `Pr(..., ...)`, then it is interpreted as `Pr(Y = ..., K = ...)`. If it is called with three unnamed arguments, then it is interpreted as either `Pr(Y = ..., X = ..., K = ...)` or `Pr(Y = ..., K = ..., tails = ...)`, depending on whether the second argument appears to be a "prova_K" (knowledge) object or not.
-#'
-#' This function also outputs the "revisability" of the posterior probabilities above, that is, probabilities such as \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{new data}, K)} that we could have if more learning data were provided, as well as a number of samples of the possible values of such probability. This revisability can be outputted in two ways; the user can choose either, or both, or none:
-#'
-#' - As samples (default 3600 samples, depending on the 'nsamples' argument given to the [learn()] function) of the alternative values that the posterior probability could have.
-#' - As quantiles (default 5.5%, 25%, 75%, 94.5%) of the possible revisability.
-#'
-#' If several joint values are given for `Y` or `X`, the function will create a 2D grid of results for all possible combinations of the given `Y` and `X` values.
-#'
-#' This function also allows for base-rate or other prior-probability corrections: If a prior (for instance, a base rate) for the data corresponding to rows `Y` is given, the function will calculate the probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})} from \eqn{\mathrm{Pr}(X = x \vert Y = y, K)} and the prior, by means of Bayes's theorem
-#' \deqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})
-#' =
-#' \frac{
-#' \mathrm{Pr}(X = x \vert Y = y, K) \cdot
-#' \mathrm{Pr}(Y = y \vert \text{prior})
-#' }{
-#' \sum_{y'} \mathrm{Pr}(X = x \vert Y = y', K) \cdot
-#' \mathrm{Pr}(Y = y' \vert \text{prior})
-#' }
-#' \ .}
-#' *Important*: any values *not* present in the `Y` data frame are given *zero* prior probability; in other words, the normalization \eqn{\sum_{y'}} only counts the $y$ values appearing in the data frame `Y`.
-#'
-#' Each variate in each argument `Y`, `X` can be specified either as a point-value \eqn{Y = y} or as a left-open interval \eqn{Y \le y} or as a right-open interval \eqn{Y \ge y}, through the argument `tails`.
-#'
-#' See `vignette('intro')` for example uses.
-#'
 #' @param Y Matrix or data.table: set of values of variates whose probabilities are sought. One variate per column, one set of values per row.
-#' @param X Matrix or data.table or `NULL` (default): set of values of variates in the conditional of the probability of `Y`. If `NULL`, no conditioning is made (besides the conditioning on knowledge `K`). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.
-#' @param K A "prova_K" (knowledge) object produced by [learn()]. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one. See "Details" for the interpretation of unnamed arguments.
-#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `Y` and `X`. For variates in this list, the probability arguments are understood in a semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for `Y` and `X` variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by `'<='` or `'lower'` or`'left'` or `-1`; a right-open interval \eqn{Y \ge y} is indicated by `'>='` or `'upper'` or `'right'` or `+1`. Values `NULL`, `'=='`, `0` indicate that a point value `Y = y` (not an interval) should be calculated. **NB**: the semi-open intervals *always* include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} you should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to *more* than 1.
+#' @param X Matrix or data.table, or `NULL` or `NA` (default): set of values of variates in the conditional of the probability of `Y`. If `NA` or `NULL`, no conditioning is made (besides the conditioning on knowledge `K`). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.
+#' @param K One of these alternatives:
+#' - A "K" (more precisely "prova_K") object.
+#' - A character string of the path to an [RDS][base::readRDS] file (typically created by `learn()`) containing a valid "K" object.
+#' - A character string of the path to a directory (also typically created by `learn()`) containing such an [RDS][base::readRDS] file of a "K" object.
+#' - For function `getK()` it can also be `NULL` or omitted, if a default `K = ` argument has been defined with `useK()`.
+#'
+#' Alternatively, a default `K = ` argument can be set with `useK()`, in which case the `K = ` argument may be omitted. See "Details" for the interpretation of unnamed arguments.
+#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `Y` and `X`. For variates in this list, the probability arguments are understood in a semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for `Y` and `X` variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by `'<='` or `'lower'` or`'left'` or `-1`; a right-open interval \eqn{Y \ge y} is indicated by `'>='` or `'upper'` or `'right'` or `+1`. Values `NULL`, `'=='`, `0` indicate that a point value `Y = y` (not an interval) should be calculated. **Warning**: the semi-open intervals *always* include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} the user should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to *more* than 1.
 #' @param priorY Numeric vector with the same length as the rows of `Y`, or `TRUE`, or `NULL` (default): prior probabilities or base rates for the `Y` values. If `TRUE`, the prior probabilities are assumed to be all equal.
 #' @param nsamples Integer or `NULL` or `'all'` (default): desired number of samples of the revisability of the probability for `Y`. If `NULL` or 0, no samples are reported. If `'all'` or `Inf`, all samples obtained by the [learn()] function are used.
 #' @param quantiles Numeric vector, between 0 and 1, or `NULL`: desired quantiles of the revisability of the probability for `Y`. Default `c(0.055, 0.25, 0.75, 0.945)`, that is, the 5.5%, 25%, 75%, 94.5% quantiles. These are typical quantile values in the Bayesian literature: they give 50% and 89% credibility intervals, which correspond to 1 shannons and 0.5 shannons of uncertainty (see <doi:10.5281/zenodo.17072199>). If `NULL`, no quantiles are calculated.
@@ -49,6 +25,39 @@
 #' @param verbose Logical, default `FALSE`: give messages about parallel processing?
 #' @param keepYX Logical, default `TRUE`: keep a copy of the `Y` and `X` arguments in the output? This is used for [plot.prova_pr()].
 #'
+#' @details
+#' This function calculates the posterior probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K)}, where \eqn{Y = y} and \eqn{X = x} are two (non overlapping) sets of joint variate values, inputted as [data frame][base::data.frame()] arguments `Y` and `X`, and \eqn{K} is the information in the data and metadata. It is somewhat analogous to the `dxxx`-variants and `pxxx`-variants of [R distribution functions][stats::Distributions]. If `X` is `NA`, then the posterior probability \eqn{\mathrm{Pr}(Y = y \vert K)} is calculated.
+#'
+#' *Tail probabilities.* For some variates in `Y` or `X`, tail values can also be prescribed, so that this function calculates mixed probabilities such as \deqn{\mathrm{Pr}(Y_1 = y_1, Y_2 \le y_2, \dotsc \vert X_1 = x_1, X_2 \ge x_2, \dotsc, K)\ .} Tail values are inputted via the `'tails'` argument; see "Usage". Note that nominal variates, strictly speaking, have no meaningful ordering, so the "\eqn{\ge}" and "\eqn{\le}" relations are not meaningful for them. For this kind of variates the "\eqn{\ge}" relation is understood in the sense of the value order appearing in the [metadata] file.
+#'
+#' *Arguments.* A default value for the `K = ` argument can be set (and unset) with `useK()`. When this is done, the `K = ` argument may be omitted, saving a lot of `K = ...`-typing in this and other functions.
+#'
+#' Therefore if `Pr()` is called with one unnamed argument, `Pr(...)`, then it is interpreted as `Pr(Y = ...)`, with `X = NA` and the default `K = ` argument set by `useK()`. If `Pr()` is called with two unnamed arguments, `Pr(..., ...)`, then it is interpreted as `Pr(Y = ..., X = ...)` and the default `K = ` argument set by `useK()`. If it is called with three unnamed arguments, then it is interpreted as `Pr(Y = ..., X = ..., K = ...)`, with `K` explicitly given, overriding any default set by `useK()`. In order to specify `Y` and `K` without naming the arguments, the form `Pr(..., NA, ...)` must be used, explicitly giving `X` as second argument.
+#'
+#' *Revisabilities.* This function also outputs the "revisability" of the posterior probabilities above, that is, probabilities such as \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{new data}, K)} that we could have if more learning data were provided, as well as a number of samples of the possible values of such probability. This revisability can be outputted in two ways; the user can choose either, or both, or none:
+#'
+#' - As samples (default 3600 samples, depending on the 'nsamples' argument given to the [learn()] function) of the alternative values that the posterior probability could have.
+#' - As quantiles (default 5.5%, 25%, 75%, 94.5%) of the possible revisability.
+#'
+#' If several joint values are given for `Y` or `X`, the function will create a 2D grid of results for all possible combinations of the given `Y` and `X` values.
+#'
+#' *Prior specification.* This function also allows for base-rate or other prior-probability corrections: If a prior (for instance, a base rate) for the data corresponding to rows `Y` is given, the function will calculate the probability \eqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})} from \eqn{\mathrm{Pr}(X = x \vert Y = y, K)} and the prior, by means of Bayes's theorem
+#' \deqn{\mathrm{Pr}(Y = y \vert X = x, K, \text{prior})
+#' =
+#' \frac{
+#' \mathrm{Pr}(X = x \vert Y = y, K) \cdot
+#' \mathrm{Pr}(Y = y \vert \text{prior})
+#' }{
+#' \sum_{y'} \mathrm{Pr}(X = x \vert Y = y', K) \cdot
+#' \mathrm{Pr}(Y = y' \vert \text{prior})
+#' }
+#' \ .}
+#' *Important*: any values *not* present in the `Y` data frame are given *zero* prior probability. In other words, the normalization \eqn{\sum_{y'}} only counts the \eqn{y'} values appearing in the data frame `Y`.
+#'
+#' Each variate in each argument `Y`, `X` can be specified either as a point-value \eqn{Y = y} or as a left-open interval \eqn{Y \le y} or as a right-open interval \eqn{Y \ge y}, through the argument `tails`.
+#'
+#' See `vignette('intro')` for example uses.
+#'
 #' @return An object of class "prova_pr" (probability), which is a list consisting of the following elements:
 #'
 #' - `'value'`: a matrix with the probabilities \eqn{\mathrm{Pr}(Y = y \vert X = x, K)}, for all joint values \eqn{y} of the \eqn{Y}-variates (rows) and  all joint values \eqn{x} of the \eqn{X}-variates (columns).
@@ -57,7 +66,7 @@
 #' - `'value.acc'`, `quantiles.acc`: arrays with the numerical accuracies (roughly speaking a standard deviation) of the Monte Carlo calculations for the `'values'` and `'quantiles'` elements.
 #' - `'density'`: numerical vector as long as number of rows in `Y`, used mainly for [plot.prova_pr()]. It is the order of the probability density the `Y`-values: values with `0` are actual probabilities; values with `1` are one-dimensional probability densities \eqn{\mathrm{p}(\dotso)\,\mathrm{d}y}; values with `2` are two-dimensional probability densities \eqn{\mathrm{p}(\dotso)\,\mathrm{d}y_1\,\mathrm{d}y_2}; and so on.
 #' - `'Y'`, `'X'`, `'tails'`: copies of the `Y`, `X`, `tails` arguments.
-#' - `'K'`: name of the "prova_K" (knowledge) object used in the calculation.
+#' - `'K'`: name of the "K" object used in the calculation.
 #'
 #' @references
 #'
@@ -69,7 +78,9 @@
 #' - Porta Mana (2025): *What's special about 89% credibility intervals?*, <doi:10.5281/zenodo.17072199>.
 #'
 #' @seealso
-#' [learn()], which generates the `K`nowledge objects required by `Pr()`.
+#' [learn()], to generate the `K`nowledge objects required by `Pr()`.
+#'
+#' [useK()] to set a "K" object as default in all `K = ` arguments.
 #'
 #' [plot.prova_pr()] to plot probabilities and quantiles calculated by `Pr()`.
 #'
@@ -81,8 +92,10 @@
 #'
 #' [rPr()] to generate datapoints.
 #'
+#' [Kexample] an example "K" object included with **Prova**.
+#'
 #' @examples
-#' ## Use the "prova_K" (knowledge) object 'Kexample',
+#' ## Use the "K" object 'Kexample',
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -90,8 +103,8 @@
 #' ## Calculate the probability that an unknown penguin from this population
 #' ## is of species 'Adelie'
 #'
-#' ## more explicitly: Pr(Y = data.frame(species = 'Adelie'), K = Kexample)
-#' probs <- Pr(data.frame(species = 'Adelie'), Kexample)
+#' ## alternatively: Pr(data.frame(species = 'Adelie'), NA, Kexample)
+#' probs <- Pr(Y = data.frame(species = 'Adelie'), K = Kexample)
 #'
 #' ## display the probability value
 #' probs$value
@@ -110,8 +123,10 @@
 #' ## Calculate the 3 probabilities that an unknown penguin from this population
 #' ## is of species 'Adelie', 'Chinstrap', 'Gentoo'
 #'
-#' probs <- Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
-#'   Kexample)
+#' ## alternatively:
+#' ## Pr(data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')), NA, Kexample)
+#' probs <- Pr(Y = data.frame(species = c('Adelie', 'Chinstrap', 'Gentoo')),
+#'   K = Kexample)
 #'
 #' ## display the 3 probability values
 #' probs$value
@@ -132,8 +147,9 @@
 #' ## Calculate the probability that an unknown penguin is of species 'Adelie'
 #' ## GIVEN that its bill length is 43 mm
 #'
-#' ## more explicitly: Pr(Y = ..., X = ..., K = Kexample)
-#' probs <- Pr(data.frame(species = 'Adelie'), data.frame(bill_len = 43),
+#' ## alternatively: Pr(Y = ..., X = ..., K = Kexample)
+#' probs <- Pr(data.frame(species = 'Adelie'),
+#'   data.frame(bill_len = 43),
 #'   Kexample)
 #'
 #' ## display the probability value
@@ -150,7 +166,7 @@
 #' ## Calculate the probability that
 #' ## an unknown penguin is of species 'Adelie' AND its bill length is 43 mm
 #'
-#' probs <- Pr(data.frame(species = 'Adelie', bill_len = 43), Kexample)
+#' probs <- Pr(Y = data.frame(species = 'Adelie', bill_len = 43), K = Kexample)
 #'
 #' ## display the probability value
 #' probs$value
@@ -190,7 +206,8 @@
 #'   bill_len = c(43, 44)
 #' )
 #'
-#' probs <- Pr(Y, Kexample)
+#' ## X is not given
+#' probs <- Pr(Y, NA, Kexample)
 #'
 #' ## display the 6 joint-probability values
 #' probs$value
@@ -200,6 +217,23 @@
 #' probs$quantiles[, , c('5.5%', '94.5%')]
 #'
 #'
+#' ## ## Example 7:
+#' ## To omit 'K =' arguments, we can set a default one with useK()
+#' useK(Kexample)
+#'
+#' ## Calculate the probability that an unknown penguin from this population
+#' ## is of species 'Adelie'
+#'
+#' probs <- Pr( data.frame(species = 'Adelie') )
+#'
+#' ## Calculate the probability that an unknown penguin is of species 'Adelie'
+#' ## GIVEN that its bill length is 43 mm
+#'
+#' probs <- Pr( data.frame(species = 'Adelie'), data.frame(bill_len = 43) )
+#'
+#'#' ## Remove any default 'K =' argument
+#' useK()
+#'
 #' @import parallel
 #' @import stats
 #' @import utils
@@ -208,7 +242,7 @@
 #' @export
 Pr <- function(
     Y,
-    X = NULL,
+    X = NA,
     K = NULL,
     tails = NULL,
     priorY = NULL,
@@ -269,31 +303,31 @@ Pr <- function(
         on.exit(closecoresonexit())
     }
 
-    ## Figure out unnamed arguments
-    Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
-    if(!is.null(X) && is.null(K)){
-        K <- X
-        X <- NULL
-        Kname <- Kname[2]
-    } else if(!is.null(X) && !is.null(K) && is.null(tails) &&
-                  !is.null(.retrieveK(X))){
-            tails <- K
-            K <- X
-            X <- NULL
-            Kname <- Kname[2]
-    } else {
-        Kname <- Kname[1]
-    }
+    ## ## Figure out unnamed arguments
+    ## Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
+    ## if(!is.null(X) && is.null(K)){
+    ##     K <- X
+    ##     X <- NULL
+    ##     Kname <- Kname[2]
+    ## } else if(!is.null(X) && !is.null(K) && is.null(tails) &&
+    ##               !is.null(getK(X))){
+    ##         tails <- K
+    ##         K <- X
+    ##         X <- NULL
+    ##         Kname <- Kname[2]
+    ## } else {
+    ##     Kname <- Kname[1]
+    ## }
 
-    ## Check 'K' argument
-    K <- .retrieveK(K)
-    if(is.null(K)){
-        stop("Argument 'K' must be a 'prova_K' object, or a path to an RDS file with such object, or a path to a directory to a 'K.rds' file.")
-    }
+    ## Check 'K' argument and name
+    K <- getK(K, deparse(substitute(K)))
+    Kname <- K[[2]]
+    K <- K[[1]]
+    gc(full = TRUE)
 
     auxmetadata <- K$auxmetadata
     K$auxmetadata <- NULL
-    K$auxinfo <- NULL
+    K$info <- NULL
     ncomponents <- nrow(K$W)
     nmcsamples <- ncol(K$W)
 
@@ -659,8 +693,8 @@ Pr <- function(
     if(!is.null(tails)){
         outtails <- list()
         outtails[c(colnames(Y), colnames(X))] <- ''
-        outtails[names(tails)[tails == -1]] <- '>'
-        outtails[names(tails)[tails == 1]] <- '<'
+        outtails[names(tails)[tails == -1]] <- '>='
+        outtails[names(tails)[tails == 1]] <- '<='
     } else {
         outtails <- NULL
     }
@@ -680,18 +714,21 @@ Pr <- function(
 
     ## Dimension & value names for variates
     Ynames <- setNames(object = list(
-        apply(X = Y, MARGIN = 1, FUN = paste0, collapse = sep,
-            simplify = TRUE)),
-        nm = paste0(colnames(Y), outtails[colnames(Y)], collapse = sep) )
+        apply(X = Y, MARGIN = 1, FUN = function(xx){
+            paste0(outtails[colnames(Y)], xx, collapse = sep)
+        }, simplify = TRUE)
+    ),
+    nm = paste0(colnames(Y), collapse = sep))
 
     if(!is.null(X)){
         Xnames <- setNames(object = list(
-            apply(X = X, MARGIN = 1, FUN = paste0, collapse = sep,
-                simplify = TRUE)),
-            nm = paste0(solidus,
-                paste0(colnames(X), outtails[colnames(X)], collapse = sep)) )
+            apply(X = X, MARGIN = 1, FUN = function(xx){
+                paste0(outtails[colnames(X)], xx, collapse = sep)
+            }, simplify = TRUE)
+        ),
+        nm = paste0(solidus, paste0(colnames(X), collapse = sep)))
     } else {
-        Xnames <- list(NULL)
+        Xnames <- list('')
     }
 
 
@@ -719,8 +756,9 @@ Pr <- function(
 
     if(isTRUE(keepYX)){
         ## save Y and X values in the output; useful for plotting methods
-        out$Y <- Y
-        out$X <- X
+        out <- c(out, list(Y = Y, X = X))
+        ## out$Y <- Y
+        ## out$X <- X
     }
     if(!is.null(outtails)){
         out$tails <- outtails[!(outtails == '')]

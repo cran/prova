@@ -12,6 +12,7 @@
 #' [metadatatemplate()] which helps producing this kind of metadata files from a given dataset.
 #'
 #' [learn()] which needs this kind of metadata files to "learn" from data.
+#'
 #' @concept data
 "metadataExample"
 
@@ -19,11 +20,10 @@
 #' Example `K`nowledge object produced by learn()
 #'
 #' @description
-#' An example "prova_K" (knowledge) object obtained by means of the [learn()] function, using the [datasets::penguins] dataset and the metadata in [metadataExample], according to the call
+#' An example "K" (more precisely "prova_K") object obtained by means of the [learn()] function, using the [datasets::penguins] dataset and the metadata in [metadataExample], according to the call
 #'
 #' ```
-#' learn(data = penguins, metadata = metadataExample,
-#'   nsamples = 225, nchains = 15)
+#' learn(data = penguins, metadata = metadataExample, nsamples = 225, nchains = 1)
 #' ```
 #'
 #' It is a list that essentially contains posterior hyperparameters for drawing statistical inferences about the variates `species` and `bill_len`.
@@ -39,6 +39,9 @@
 #' [learn()], which produces this kind of object.
 #'
 #' [Pr()], [qPr()], [rPr()], [mutualinfo()]: functions that require this kind of object in order to calculate probabilities and quantiles, generate data points, and calculate mutual information.
+#'
+#' [useK()] to set a "K" object as default in all `K = ` arguments.
+#'
 #' @concept learn
 "Kexample"
 

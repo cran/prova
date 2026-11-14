@@ -33,8 +33,8 @@
 #' @param Bout Character, output of B-type variate, with possible values:
 #'  'numeric': for internal MCMC use, values 0,1
 #'  'original': original representation
-#' @param variates Character vector, names of variates
-#'   corresponding to columns of x (in case x misses column names)
+## #' @param variates Character vector, names of variates
+## #'   corresponding to columns of x (in case x misses column names)
 #' @param logjacobianOr Logical or `NULL`: output is the log-Jacobian in orginal or transformed domain? `NULL` (default) means do not calculate the log-Jacobians
 #'
 #' @return A [data frame][base::data.frame()] of transformed variates, or their log-Jacobians.
@@ -49,16 +49,11 @@
     Bout = NULL,
     Oout = NULL,
     Nout = NULL,
-    variates = NULL,
     logjacobianOr = NULL
 ) {
     useLquantiles <- TRUE
 
     if(!is.data.frame(x)){ x <- as.data.frame(x) }
-
-    if (!is.null(variates)) {
-        colnames(x) <- variates
-    }
 
     as.data.frame(lapply(colnames(x), function(v) {
         datum <- x[[v]]
@@ -459,6 +454,9 @@
                         bvalues <- seq_len(Nvalues)
                         names(bvalues) <- sapply(bvalues, function(x)get(paste0('V', x)))
                         ## names(bvalues) <- unlist(xinfo[paste0('V', bvalues)])
+                        if(!all(as.character(datum[!is.na(datum)]) %in% names(bvalues))) {
+                            stop('Unknown values for variate ', v)
+                        }
                         datum <- bvalues[as.character(datum)]
 
                     } else if (Oout == 'index') {

@@ -25,9 +25,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV0 <- TRUE
-        V0mean <- .learnbind(V0mean,
+        V0mean <- .a3bind(V0mean,
             K$Rmean[aux$id, , , drop = FALSE])
-        V0sd <- .learnbind(V0sd,
+        V0sd <- .a3bind(V0sd,
             K$Rsd[aux$id, , , drop = FALSE])
         xV0 <- rbind(xV0,
             t(as.matrix(.vtransform(
@@ -53,9 +53,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV0 <- TRUE
-        V0mean <- .learnbind(V0mean,
+        V0mean <- .a3bind(V0mean,
             K$Cmean[aux$id, , , drop = FALSE])
-        V0sd <- .learnbind(V0sd,
+        V0sd <- .a3bind(V0sd,
             K$Csd[aux$id, , , drop = FALSE])
         xV0 <- rbind(xV0,
             t(as.matrix(.vtransform(
@@ -81,9 +81,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean,
+        V1mean <- .a3bind(V1mean,
                 tails[aux$name] * K$Rmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd,
+        V1sd <- .a3bind(V1sd,
             K$Rsd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
             tails[aux$name] *
@@ -104,8 +104,8 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean, K$Cmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd, K$Csd[aux$id, , , drop = FALSE])
+        V1mean <- .a3bind(V1mean, K$Cmean[aux$id, , , drop = FALSE])
+        V1sd <- .a3bind(V1sd, K$Csd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
             t(as.matrix(.vtransform(
                 x[, aux$name, drop = FALSE],
@@ -125,8 +125,8 @@
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
         ## note the minus!
-        V1mean <- .learnbind(V1mean, -K$Cmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd, K$Csd[aux$id, , , drop = FALSE])
+        V1mean <- .a3bind(V1mean, -K$Cmean[aux$id, , , drop = FALSE])
+        V1sd <- .a3bind(V1sd, K$Csd[aux$id, , , drop = FALSE])
         ## note the minus!
         xV1 <- rbind(xV1,
             - t(as.matrix(.vtransform(
@@ -146,8 +146,8 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean, K$Dmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd, K$Dsd[aux$id, , , drop = FALSE])
+        V1mean <- .a3bind(V1mean, K$Dmean[aux$id, , , drop = FALSE])
+        V1sd <- .a3bind(V1sd, K$Dsd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
             t(as.matrix(.vtransform(
                 x[, aux$name, drop = FALSE],
@@ -168,8 +168,8 @@
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
         ## note the minus!
-        V1mean <- .learnbind(V1mean, -K$Dmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd, K$Dsd[aux$id, , , drop = FALSE])
+        V1mean <- .a3bind(V1mean, -K$Dmean[aux$id, , , drop = FALSE])
+        V1sd <- .a3bind(V1sd, K$Dsd[aux$id, , , drop = FALSE])
         ## note the minus!
         xV1 <- rbind(xV1,
             - t(as.matrix(.vtransform(
@@ -195,9 +195,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean,
+        V1mean <- .a3bind(V1mean,
                 K$Cmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd,
+        V1sd <- .a3bind(V1sd,
             K$Csd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
                 t(as.matrix(.vtransform(
@@ -222,9 +222,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean,
+        V1mean <- .a3bind(V1mean,
                 - K$Cmean[aux$id, , , drop = FALSE]) # minus sign
-        V1sd <- .learnbind(V1sd,
+        V1sd <- .a3bind(V1sd,
             K$Csd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
                - t(as.matrix(.vtransform( # minus sign
@@ -249,9 +249,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean,
+        V1mean <- .a3bind(V1mean,
                 K$Dmean[aux$id, , , drop = FALSE])
-        V1sd <- .learnbind(V1sd,
+        V1sd <- .a3bind(V1sd,
             K$Dsd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
                 t(as.matrix(.vtransform(
@@ -277,9 +277,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV1 <- TRUE
-        V1mean <- .learnbind(V1mean,
+        V1mean <- .a3bind(V1mean,
                 - K$Dmean[aux$id, , , drop = FALSE]) # minus sign
-        V1sd <- .learnbind(V1sd,
+        V1sd <- .a3bind(V1sd,
             K$Dsd[aux$id, , , drop = FALSE])
         xV1 <- rbind(xV1,
                - t(as.matrix(.vtransform( # minus sign
@@ -314,9 +314,9 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nV2 <- TRUE
-        V2mean <- .learnbind(V2mean,
+        V2mean <- .a3bind(V2mean,
                 K$Dmean[aux$id, , , drop = FALSE])
-        V2sd <- .learnbind(V2sd,
+        V2sd <- .a3bind(V2sd,
             K$Dsd[aux$id, , , drop = FALSE])
         V2steps <- aux$halfstep / aux$tscale
         xV2 <- rbind(xV2,
@@ -335,7 +335,8 @@
 ###
     nVN <- FALSE
     VNprobs <- NULL
-    Nshift <- 0L
+    Nshift <- 0
+
 ### O-variates not in 'tails'
     toselect <- which((auxmetadata$name %in% Xv) &
                           (auxmetadata$mcmctype == 'O') &
@@ -347,9 +348,8 @@
         ##     aux$indexpos[i] + seq_len(aux$Nvalues[i])
         ## }))
         Nindices <- unlist(mapply(FUN = function(i, n) {i + seq_len(n)},
-            aux$indexpos, aux$Nvalues,
-            SIMPLIFY = FALSE))
-        VNprobs <- .learnbind(VNprobs,
+            aux$indexpos, aux$Nvalues, SIMPLIFY = FALSE))
+        VNprobs <- .a3bind(VNprobs,
             K$Oprob[Nindices, , , drop = FALSE])
         xVN <- rbind(xVN,
                 t(as.matrix(.vtransform(
@@ -358,13 +358,15 @@
                     Oout = 'numeric',
                     logjacobianOr = NULL
                 ))) +
-                    Nshift + c(0, cumsum(aux$Nvalues[-1]))
+                    Nshift + c(0, cumsum(aux$Nvalues[-length(aux$Nvalues)]))
         )
-        Nshift <- Nshift + length(Nindices)
+        Nshift <- nrow(VNprobs)
     }
-### N-variates
+
+### N-variates not in 'tails'
     toselect <- which((auxmetadata$name %in% Xv) &
-                          (auxmetadata$mcmctype == 'N'))
+                          (auxmetadata$mcmctype == 'N') &
+                          !(auxmetadata$name %in% tailsv))
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nVN <- TRUE
@@ -372,10 +374,8 @@
         ##     aux$indexpos[i] + seq_len(aux$Nvalues[i])
         ## }))
         Nindices <- unlist(mapply(FUN = function(i, n) {i + seq_len(n)},
-            aux$indexpos, aux$Nvalues,
-            SIMPLIFY = FALSE))
-        VNprobs <- .learnbind(VNprobs,
-            K$Nprob[Nindices, , , drop = FALSE])
+            aux$indexpos, aux$Nvalues, SIMPLIFY = FALSE))
+        VNprobs <- .a3bind(VNprobs, K$Nprob[Nindices, , , drop = FALSE])
         xVN <- rbind(xVN,
                 t(as.matrix(.vtransform(
                     x[, aux$name, drop = FALSE],
@@ -383,9 +383,9 @@
                     Nout = 'numeric',
                     logjacobianOr = NULL
                 ))) +
-                    Nshift + c(0, cumsum(aux$Nvalues[-1]))
+                    Nshift + c(0, cumsum(aux$Nvalues[-length(aux$Nvalues)]))
         )
-        Nshift <- Nshift + length(Nindices)
+        Nshift <- nrow(VNprobs)
     }
 
 ### O-variates in 'tails'
@@ -396,15 +396,12 @@
         aux <- auxmetadata[toselect, ]
         nVN <- TRUE
         for(i in seq_len(nrow(aux))) {
-            VNprobs <- .learnbind(VNprobs,
+            Nindices <- aux$indexpos[i] + seq_len(aux$Nvalues[i])
+            VNprobs <- .a3bind(VNprobs,
                 if(tails[aux$name[i]] > 0) {
-                    .rowcumsum(K$Oprob[
-                        aux$indexpos[i] + seq_len(aux$Nvalues[i]), , , drop = FALSE
-                    ])
+                    .rowcumsum(K$Oprob[Nindices, , , drop = FALSE])
                 } else {
-                    .rowinvcumsum(K$Oprob[
-                        aux$indexpos[i] + seq_len(aux$Nvalues[i]), , , drop = FALSE
-                    ])
+                    .rowinvcumsum(K$Oprob[Nindices, , , drop = FALSE])
                 }
             )
         }
@@ -415,9 +412,43 @@
                 Oout = 'numeric',
                 logjacobianOr = NULL
             ))) +
-                Nshift + c(0, cumsum(aux$Nvalues[-1]))
+                Nshift + c(0, cumsum(aux$Nvalues[-length(aux$Nvalues)]))
         )
+        Nshift <- nrow(VNprobs)
     }
+
+### N-variates in 'tails'
+    toselect <- which((auxmetadata$name %in% Xv) &
+                          (auxmetadata$mcmctype == 'N') &
+                          (auxmetadata$name %in% tailsv))
+    if(length(toselect) > 0){
+        aux <- auxmetadata[toselect, ]
+        nVN <- TRUE
+        for(i in seq_len(nrow(aux))) {
+            VNprobs <- .a3bind(VNprobs,
+                if(tails[aux$name[i]] > 0) {
+                    .rowcumsum(K$Nprob[
+                        aux$indexpos[i] + seq_len(aux$Nvalues[i]), , , drop = FALSE
+                    ])
+                } else {
+                    .rowinvcumsum(K$Nprob[
+                        aux$indexpos[i] + seq_len(aux$Nvalues[i]), , , drop = FALSE
+                    ])
+                }
+            )
+        }
+        xVN <- rbind(xVN,
+            t(as.matrix(.vtransform(
+                x[, aux$name, drop = FALSE],
+                auxmetadata = auxmetadata,
+                Nout = 'numeric',
+                logjacobianOr = NULL
+            ))) +
+                Nshift + c(0, cumsum(aux$Nvalues[-length(aux$Nvalues)]))
+        )
+        Nshift <- nrow(VNprobs)
+    }
+
     xVN <- unname(xVN)
 
 ###
@@ -431,8 +462,7 @@
     if(length(toselect) > 0){
         aux <- auxmetadata[toselect, ]
         nVB <- TRUE
-        VBprobs <- .learnbind(VBprobs,
-            K$Bprob[aux$id, , , drop = FALSE])
+        VBprobs <- .a3bind(VBprobs, K$Bprob[aux$id, , , drop = FALSE])
         xVB <- rbind(xVB,
             t(as.matrix(.vtransform(
                 x[, aux$name, drop = FALSE],
@@ -588,7 +618,7 @@
             FF[round(seq(1, length(FF), length.out = nsamples))]
         },
         ##
-        value.acc = .funMCSELD(x = FF),
+        value.acc = .funMCSEBM(x = FF),
         ##
         quantiles.acc = if(doquantiles){
             temp <- .funMCEQ(x = FF, prob = quantiles, Qpair = Qerror)

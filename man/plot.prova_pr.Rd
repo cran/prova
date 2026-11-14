@@ -7,13 +7,13 @@
 \method{plot}{prova_pr}(
   x,
   spread = NULL,
-  subset = NULL,
   PvsY = NULL,
   type = NULL,
   lty = c(1, 2, 4, 3, 6, 5),
   pch = c(1, 2, 0, 5, 6, 3),
   lwd = 2,
   col = palette(),
+  cex = 1,
   xlab = NULL,
   ylab = NULL,
   xlim = NULL,
@@ -41,19 +41,17 @@
 
 \item{spread}{One of the values \code{'quantiles'}, \code{'samples'}, \code{'none'} (equivalent to \code{NA} or \code{FALSE}), or \code{NULL} (default), in which case the revisability available in \code{p} is used. This argument chooses how to represent the revisability of the probability; see \code{\link[=Pr]{Pr()}}. If the requested representation is not available in the object \code{x}, then a warning is issued and no revisability is plotted.}
 
-\item{subset}{Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.}
-
 \item{PvsY}{Logical or \code{NULL}: should probabilities be plotted against their \code{Y} argument? If \code{NULL}, the argument between \code{Y} and \code{X} having larger number of values is chosen. As many probability curves will be plotted as the number of values of the other argument.}
 
 \item{type}{\code{NULL} (default) or character vector or list indicating the type of plot for the main probability distribution; see \code{\link[base:plot]{base::plot()}}. The default \code{NULL} value uses type \code{'l'} (lines) for continuous variates, and \code{'b'} (points and lines) for discrete variates.}
 
 \item{lty}{Analogous to argument \code{lty} (line style) in \code{\link[graphics:matplot]{graphics::matplot()}}, used for the main probability distributions.}
 
-\item{pch, col, xlab, ylab, main, xlim, ylim, grid, axes, add, lwd.grid, col.grid}{see analogous arguments in \code{\link[graphics:plot.default]{graphics::plot.default()}} and \code{\link[graphics:matplot]{graphics::matplot()}}.}
+\item{pch, col, cex, xlab, ylab, main, xlim, ylim, grid, axes, add, lwd.grid, col.grid}{see analogous arguments in \code{\link[graphics:plot.default]{graphics::plot.default()}} and \code{\link[graphics:matplot]{graphics::matplot()}}.}
 
 \item{lwd}{Analogous to argument \code{lwd} (line width) in \code{\link[graphics:matplot]{graphics::matplot()}}, used for the main probability distributions.}
 
-\item{legend}{One of the values \code{'bottomright'}, \code{'bottom'}, \code{'bottomleft'}, \code{'left'}, \code{'topleft'}, \code{'top'}, \code{'topright'}, \code{'right'}, \code{'center'} (see \code{\link[graphics:legend]{graphics::legend()}}): plot a legend at that position. A value \code{FALSE} or any other does not plot any legend. Default \code{'topright'}.}
+\item{legend}{One of the values \code{'bottomright'}, \code{'bottom'}, \code{'bottomleft'}, \code{'left'}, \code{'topleft'}, \code{'top'}, \code{'topright'}, \code{'right'}, \code{'center'} (see \code{\link[graphics:legend]{graphics::legend()}}): plot a legend at that position. Value \code{FALSE} or \code{NA} does not plot any legend. Default \code{'topright'}.}
 
 \item{alpha.f}{Numeric, default \code{1}: opacity of the colours of lines or markers, \code{0} being completely invisible and \code{1} completely opaque.}
 
@@ -67,7 +65,7 @@
 
 \item{alpha.f.spread}{Numeric or \code{NULL} (default): opacity of the quantile bands or of the long-run-frequency samples, similar to \code{alpha.f}. \code{NULL} means \code{0.25} if \code{spread = 'quantiles'}; and an appropriate value if \code{spread = 'samples'},dependent on the number of samples (more samples, less opacity).}
 
-\item{quantiles.spread}{Numeric vector or \code{NULL} (default): revisability quantiles to display. Value \code{NULL} uses all quantiles available in the \code{x} object, or just extreme quantiles if multiple probability curves are shown.}
+\item{quantiles.spread}{Numeric vector or \code{TRUE} or \code{NULL} (default): revisability quantiles to display. Value \code{TRUE} uses all quantiles available in the \code{x} object. Value \code{NULL} uses all quantiles available in the \code{x} object, or just extreme quantiles if multiple probability curves are shown.}
 
 \item{nsamples.spread}{Integer, default 360: number of samples of long-run frequencies to display.}
 
@@ -97,7 +95,7 @@ The label on the left y-axis is by default the text \verb{Pr(}\eqn{Y}\code{|}\eq
 Continuous variates with bounded domains, such as censored variates, may have singular probability values -- concentrated probability mass -- at the boundary points. When such singular points are present, their probability scale is shown in the \emph{right} y-axis.
 }
 \examples{
-## Use the "prova_K" (knowledge) object 'Kexample',
+## Use the "K" object 'Kexample',
 ## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
 
@@ -106,7 +104,7 @@ Continuous variates with bounded domains, such as censored variates, may have si
 valuesBill <- vrtgrid('bill_len', Kexample)
 
 ## calculate the probabilities and quantiles
-probs <- Pr(valuesBill, Kexample)
+probs <- Pr(Y = valuesBill, K = Kexample)
 
 ## plot the probabilities and quantiles
 plot(probs)

@@ -4,8 +4,14 @@
 #'
 #' @param Y named list of values; list names must be valid variate names.
 #' @param X named list of values; list names must be valid variate names.
-#' @param K Either a character with the name of a directory or full path for a 'K.rds' object, produced by the [learn()] function, or such an object itself.
-#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `Y` and `X`. For variates in this list, the probability arguments are understood in a semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for `Y` and `X` variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by `'<='` or `'lower'` or`'left'` or `-1`; a right-open interval \eqn{Y \ge y} is indicated by `'>='` or `'upper'`  or `'right'` or `+1`. Values `NULL`, `'=='`, `0` indicate that a point value `Y = y` (not an interval) should be calculated. **NB**: the semi-open intervals *always* include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} you should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to *more* than 1.
+#' @param K One of these alternatives:
+#' - A "K" (more precisely "prova_K") object.
+#' - A character string of the path to an [RDS][base::readRDS] file (typically created by `learn()`) containing a valid "K" object.
+#' - A character string of the path to a directory (also typically created by `learn()`) containing such an [RDS][base::readRDS] file of a "K" object.
+#' - For function `getK()` it can also be `NULL` or omitted, if a default `K = ` argument has been defined with `useK()`.
+#'
+#' Alternatively, a default `K = ` argument can be set with `useK()`, in which case the `K = ` argument may be omitted. See "Details" for the interpretation of unnamed arguments.
+#' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `Y` and `X`. For variates in this list, the probability arguments are understood in a semi-open interval sense: \eqn{Y \le y} or \eqn{Y \ge y}, an so on. This is true for `Y` and `X` variates (on the left and on the right of the conditional sign \eqn{\,\vert\,}). A left-open interval \eqn{Y \le y} is indicated by `'<='` or `'lower'` or`'left'` or `-1`; a right-open interval \eqn{Y \ge y} is indicated by `'>='` or `'upper'`  or `'right'` or `+1`. Values `NULL`, `'=='`, `0` indicate that a point value `Y = y` (not an interval) should be calculated. **NB**: the semi-open intervals *always* include the given value; this is important for ordinal or rounded variates. For instance, if \eqn{Y} is an integer variate, then to calculate  \eqn{\mathrm{Pr}(Y < 3)} the user should require \eqn{\mathrm{Pr}(Y \le 2)}; for this reason we also have that \eqn{\mathrm{Pr}(Y \le 2)} and  \eqn{\mathrm{Pr}(Y \ge 2)} generally add up to *more* than 1.
 #' @return A list consisting of the following elements:
 #'
 #' - `value`: value of \eqn{\mathrm{Pr}(Y = y \vert X = x, \text{data})}.
@@ -24,31 +30,31 @@
 ){
     Qerror <- pnorm(c(-1, 1))
 
-    ## Figure out unnamed arguments
-    Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
-    if(!is.null(X) && is.null(K)){
-        K <- X
-        X <- NULL
-        Kname <- Kname[2]
-    } else if(!is.null(X) && !is.null(K) && is.null(tails) &&
-                  !is.null(.retrieveK(X))){
-            tails <- K
-            K <- X
-            X <- NULL
-            Kname <- Kname[2]
-    } else {
-        Kname <- Kname[1]
-    }
+    ## ## Figure out unnamed arguments
+    ## Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
+    ## if(!is.null(X) && is.null(K)){
+    ##     K <- X
+    ##     X <- NULL
+    ##     Kname <- Kname[2]
+    ## } else if(!is.null(X) && !is.null(K) && is.null(tails) &&
+    ##               !is.null(getK(X))){
+    ##         tails <- K
+    ##         K <- X
+    ##         X <- NULL
+    ##         Kname <- Kname[2]
+    ## } else {
+    ##     Kname <- Kname[1]
+    ## }
 
-    ## Check 'K' argument
-    K <- .retrieveK(K)
-    if(is.null(K)){
-        stop("Argument 'K' must be a 'prova_K' object, or a path to an RDS file with such object, or a path to a directory to a 'K.rds' file.")
-    }
+    ## Check 'K' argument and name
+    K <- getK(K, deparse(substitute(K)))
+    Kname <- K[[2]]
+    K <- K[[1]]
+    gc(full = TRUE)
 
     auxmetadata <- K$auxmetadata
     K$auxmetadata <- NULL
-    K$auxinfo <- NULL
+    K$info <- NULL
     ncomponents <- nrow(K$W)
     nmcsamples <- ncol(K$W)
 
@@ -73,7 +79,7 @@
     ## tails[cright] <- -1
     tails <- unlist(tails)
 
-    ## Function to calculate and lum log-kernels log(K)
+    ## Function to calculate and sum log-kernels log(K)
     logK <- function(Z){
         logprob <- 0
 
@@ -230,10 +236,26 @@
 
 
             } else if(mctype == 'N'){
-                val <- unlist(.vtransform(Z[vrt], Nout = 'index',
+                ## ## Old version that didn't calculate tails
+                ##     val <- unlist(.vtransform(Z[vrt], Nout = 'index',
+                ##         auxmetadata = auxmetadata, logjacobianOr = NULL))
+                ##     logP <- log(K$Nprob[val, , ])
+                Nvals <- auxmetadata[auxmetadata$name == vrt, 'Nvalues']
+                seqN <- auxmetadata[auxmetadata$name == vrt, 'indexpos'] +
+                    seq_len(Nvals)
+                allP <- K$Nprob[seqN, , , drop = FALSE]
+                val <- unlist(.vtransform(Z[vrt], Nout = 'numeric',
                     auxmetadata = auxmetadata, logjacobianOr = NULL))
-                logP <- log(K$Nprob[val, , ])
 
+                if(!(vrt %in% names(tails))){
+                    logP <- log(allP[val, , ])
+                } else if(tails[vrt] %in% tailsleft){
+                    logP <- log(apply(allP[1:val, , , drop = FALSE],
+                        c(2,3), sum))
+                } else if(tails[vrt] %in% tailsright){
+                    logP <- log(apply(allP[val:Nvals, , , drop = FALSE],
+                        c(2,3), sum))
+                }
 
             } else if(mctype == 'O'){
                 Nvals <- auxmetadata[auxmetadata$name == vrt, 'Nvalues']

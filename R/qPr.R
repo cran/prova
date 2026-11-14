@@ -2,14 +2,16 @@
 #'
 #' @description Calculate the quantiles of posterior probabilities and posterior conditional probabilities. Output the revisability of such quantiles if more training data were available.
 #'
-#' @details This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the revisability of those quantiles if more learning data were provided. It is somewhat analogous to the `qxxx`-variants of [R distribution functions][stats::Distributions]. The revisability can be expressed in the form of quantiles, samples, or both, as in the [Pr()] function. If several joint values are given for the probability levels and for `X`, the function creates a 2D grid of results for all possible combinations of the given probability levels and `X` values. Each variate in the argument `X` can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument `tails`.
-#'
-#' If `qPr()` is called with three unnamed arguments, `qPr(..., ..., ...)`, then it is interpreted as `qPr(p = ..., Yname = ..., K = ...)`.
-#'
 #' @param p Numeric vector of probability levels.
 #' @param Yname Character vector: name of variate whose quantiles will be computed.
-#' @param X Matrix or data.table or `NULL` (default): set of values of variates on which we want to condition. If `NULL`, no conditioning is made (except for conditioning on the learning dataset and prior assumptions). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.
-#' @param K A "prova_K" (knowledge) object produced by [learn()]. It can also be a path to a 'K.rds' file containing such object, or to a directory containing one. See "Details" for the interpretation of unnamed arguments.
+#' @param X Matrix or data.table, or `NULL` or `NA` (default): set of values of variates in the conditional of the probability of `Y`. If `NA` or `NULL`, no conditioning is made (besides the conditioning on knowledge `K`). One variate per column, one set of values per row. See "Details" for the interpretation of unnamed arguments.
+#' @param K One of these alternatives:
+#' - A "K" (more precisely "prova_K") object.
+#' - A character string of the path to an [RDS][base::readRDS] file (typically created by `learn()`) containing a valid "K" object.
+#' - A character string of the path to a directory (also typically created by `learn()`) containing such an [RDS][base::readRDS] file of a "K" object.
+#' - For function `getK()` it can also be `NULL` or omitted, if a default `K = ` argument has been defined with `useK()`.
+#'
+#' Alternatively, a default `K = ` argument can be set with `useK()`, in which case the `K = ` argument may be omitted. See "Details" for the interpretation of unnamed arguments.
 #' @param tails Named vector or list, or `NULL` (default). The names must match some or all of the variates in arguments `X`. For variates in this list, the probability conditional is understood in a semi-open interval sense: \eqn{X \le x} or \eqn{X \ge x}, an so on. See analogous argument in [Pr()].
 ## #' @param priorY Numeric vector with the same length as the rows of `Y`, or `TRUE`, or `NULL` (default): prior probabilities or base rates for the `Y` values. If `TRUE`, the prior probabilities are assumed to be all equal. For the moment only the value `NULL` is accepted.
 #' @param nsamples Integer or `NULL` or `'all'` (default): desired number of samples of the revisability of the quantile for `Y`. If `NULL`, no samples are reported. If `'all'` (or `Inf`), all samples obtained by the [learn()] function are used.
@@ -26,28 +28,43 @@
 #' @param tol numeric positive: tolerance in the calculation of quantiles. Default: `.Machine$double.eps * 10` (typically `2.22045e-15`).
 
 #'
-#' @return A list of the following elements:
+#' @details
+#' This function calculates the quantiles of \eqn{\mathrm{Pr}(Y = y \vert X = x, K)} or of \eqn{\mathrm{Pr}(Y = y \vert X \le x, K)} or combinations thereof, at specified cumulative-probability levels. In other words, it calculates the values of \eqn{Y} having specified cumulative probabilities or conditional probabilities. It also calculates the revisability of those quantiles if more learning data were provided. It is somewhat analogous to the `qxxx`-variants of [R distribution functions][stats::Distributions].
+#'
+#' The revisability can be expressed in the form of quantiles, samples, or both, as in the [Pr()] function. If several joint values are given for the probability levels and for `X`, the function creates a 2D grid of results for all possible combinations of the given probability levels and `X` values.
+#'
+#' Each variate in the argument `X` can be specified either as a point-value \eqn{X = x} or as a left-open interval \eqn{X \le x} or as a right-open interval \eqn{X \ge x}, through the argument `tails` (see *Tail probabilities* in the [Pr()] documentation).
+#'
+#' A default value for the `K = ` argument can be set (and unset) with `useK()`. When this is done, the `K = ` argument may be omitted, saving a lot of `K = ...`-typing in this and other functions.
+#'
+#' Therefore if `qPr()` is called with two unnamed arguments, `qPr(..., ...)`, then it is interpreted as `qPr(p = ..., Yname = ...)`, with `X = NA` and the default `K = ` argument set by `useK()`. If it is called with three unnamed arguments, then it is interpreted as `qPr(p = ..., Yname = ..., X = ...)`, with the default `K = ` argument set by `useK()`. In order to specify `p`, `Yname`, and `K` without naming the arguments, the form `qPr(..., ..., NA, ...)` must be used, explicitly giving `X` as third argument.
+#'
+#' @return A list with the following elements:
 #' - `'value'`: a matrix with the requested \eqn{Y}-quantiles `p` conditional on the requested \eqn{X}-values in `X`, for all combinations of `p` (rows) and `X` (columns).
 #' - `'quantiles'` (possibly `NULL`): an array with the revisability quantiles (3rd dimension of the array) for the quantiles of the `'value'` element.
 #' - `'samples'` (possibly `NULL`): an array with the revisability samples (3rd dimension of the array) for such quantiles.
 #' - `'Y'`, `'X'` `'tails'`: copies of the `Y`, `X`, `tails` arguments.
-#' - `'K'`: name of the "prova_K" (knowledge) object used in the calculation.
+#' - `'K'`: name of the "K" object used in the calculation.
 #'
 #' @references
 #' - Porta Mana (2025): *What's special about 89% credibility intervals?* <doi:10.5281/zenodo.17072199>.
 #'
 #' @seealso
-#' [learn()], which generates the "prova_K" (knowledge) objects required by `qPr()`.
+#' [learn()], to generate "K" objects required by `qPr()`.
+#'
+#' [useK()] to set a "K" object as default in all `K = ` arguments.
 #'
 #' [Pr()] to calculate joint and conditional probabilities.
 #'
 #' [rPr()] to generate datapoints.
 #'
+#' [Kexample] an example "K" object included with **Prova**.
+#'
 #' @examples
 #' ### WARNING: the following examples, if run, might even take a minute or more.
 #'
 #' \donttest{
-#' ## Use the example "prova_K" (knowledge) object 'Kexample'
+#' ## Use the example "K" object 'Kexample'
 #' ## calculated from the "penguins" dataset;
 #' ## variates: 'species' and 'bill_len'
 #'
@@ -55,14 +72,14 @@
 #' ## Calculate the 25%-, 50%-, and 75%-quantiles for the variate "bill length",
 #' ## that is, the values of "bill length" having such cumulative probabilities:
 #'
-#' quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', Kexample)
+#' quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', NA, Kexample)
 #'
 #' ## display the quantile values
 #' quants$value
 #'
 #' ## verify these values, within numerical error, using Pr():
-#' probs <- Pr(data.frame(bill_len = c(quants$value)), Kexample,
-#'   tails = list(bill_len = -1))
+#' probs <- Pr(data.frame(bill_len = c(quants$value)), NA, Kexample,
+#'   tails = list(bill_len = '<='))
 #' probs$value
 #'
 #' ## display the revisability about the quantiles
@@ -72,15 +89,21 @@
 #' ## ## Example 2:
 #' ## Calculate the 25%-, 50%-, and 75%-quantiles for the variate "bill length",
 #' ## for the subpopulation of species 'Adelie':
-#' quants <- qPr(c(0.25, 0.5, 0.75), 'bill_len', data.frame(species = 'Adelie'),
+#' quants <- qPr(
+#'   c(0.25, 0.5, 0.75),
+#'   'bill_len',
+#'   data.frame(species = 'Adelie'),
 #'   Kexample)
 #'
 #' ## display the quantile values
 #' quants$value
 #'
 #' ## verify these values, within numerical error, using Pr():
-#' probs <- Pr(data.frame(bill_len = c(quants$value)),
-#'   data.frame(species = 'Adelie'), Kexample, tails = list(bill_len = -1))
+#' probs <- Pr(
+#'   data.frame(bill_len = c(quants$value)),
+#'   data.frame(species = 'Adelie'),
+#'   Kexample,
+#'   tails = list(bill_len = '<='))
 #' probs$value
 #' }
 #'
@@ -93,7 +116,7 @@
 qPr <- function(
     p,
     Yname,
-    X = NULL,
+    X = NA,
     K = NULL,
     tails = NULL,
     ## priorY = NULL,
@@ -156,25 +179,25 @@ qPr <- function(
         on.exit(closecoresonexit())
     }
 
-    ## Figure out unnamed arguments
-    Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
-    if(!is.null(X) && is.null(K)){
-        K <- X
-        X <- NULL
-        Kname <- Kname[2]
-    } else {
-        Kname <- Kname[1]
-    }
+    ## ## Figure out unnamed arguments
+    ## Kname <- c(deparse(substitute(K)), deparse(substitute(X)))
+    ## if(!is.null(X) && is.null(K)){
+    ##     K <- X
+    ##     X <- NULL
+    ##     Kname <- Kname[2]
+    ## } else {
+    ##     Kname <- Kname[1]
+    ## }
 
-    ## Check 'K' argument
-    K <- .retrieveK(K)
-    if(is.null(K)){
-        stop("Argument 'K' must be a 'prova_K' object, or a path to an RDS file with such object, or a path to a directory to a 'K.rds' file.")
-    }
+    ## Check 'K' argument and name
+    K <- getK(K, deparse(substitute(K)))
+    Kname <- K[[2]]
+    K <- K[[1]]
+    gc(full = TRUE)
 
     auxmetadata <- K$auxmetadata
     K$auxmetadata <- NULL
-    K$auxinfo <- NULL
+    K$info <- NULL
     ncomponents <- nrow(K$W)
     nmcsamples <- ncol(K$W)
 
@@ -444,8 +467,8 @@ qPr <- function(
     if(!is.null(tails)){
         outtails <- list()
         outtails[colnames(X)] <- ''
-        outtails[names(tails)[tails == -1]] <- '>'
-        outtails[names(tails)[tails == 1]] <- '<'
+        outtails[names(tails)[tails == -1]] <- '>='
+        outtails[names(tails)[tails == 1]] <- '<='
     } else {
         outtails <- NULL
     }
@@ -455,13 +478,14 @@ qPr <- function(
     Ynames <- setNames(object = list(p), nm = Yname)
 
     if(!is.null(X)){
-        Xnames <- setNames(object = list(
-            apply(X = X, MARGIN = 1, FUN = paste0, collapse = sep,
-                simplify = TRUE)),
-            nm = paste0(solidus,
-                paste0(colnames(X), outtails[colnames(X)], collapse = sep)) )
+         Xnames <- setNames(object = list(
+            apply(X = X, MARGIN = 1, FUN = function(xx){
+            paste0(outtails[colnames(X)], xx, collapse = sep)
+            }, simplify = TRUE)
+        ),
+            nm = paste0(solidus, paste0(colnames(X), collapse = sep)))
     } else {
-        Xnames <- list(NULL)
+        Xnames <- list('')
     }
 
     dimnames(out$value) <- c(Ynames, Xnames)
@@ -480,11 +504,13 @@ qPr <- function(
     if(isTRUE(keepYX)){
         ## save Y and X values in the output; useful for plotting methods
         if(is.null(priorY)){
-            out$pY <- Ynames
-            out$X <- X
+            out <- c(out, list(pY = Ynames, X = X))
+            ## out$pY <- Ynames
+            ## out$X <- X
         } else {
-            out$Y <- X
-            out$X <- Y
+            out <- c(out, list(Y = X, X = Y))
+            ## out$Y <- X
+            ## out$X <- Y
             }
     }
     if(!is.null(outtails)){
@@ -492,7 +518,7 @@ qPr <- function(
     }
     out$K <- Kname
 
-    class(out) <- 'prova_pr'
+    class(out) <- 'prova_qpr'
     out
 }
 
@@ -546,7 +572,8 @@ qPr <- function(
         ), na.rm = TRUE) / sumlpX) - pY
     }
 
-    value <- unname(unlist(.vtransform(value,
+    value <- unname(unlist(.vtransform(
+        as.data.frame(value, nm = auxmetadata$name),
         auxmetadata = auxmetadata,
         Rout = 'original',
         Cout = 'original',
@@ -554,7 +581,6 @@ qPr <- function(
         Oout = 'original',
         Nout = 'original',
         Bout = 'original',
-        variates <- auxmetadata$name,
         logjacobianOr = NULL)))
 
 #### Calculate quantile for the frequency samples
@@ -595,7 +621,8 @@ qPr <- function(
             ), na.rm = TRUE) / sumlpX - pY
         tocheck <- abs(FF) > tol & Yvals[, 2] - Yvals[, 1] > tol
         }
-        samples <- unname(unlist(.vtransform(samples,
+        samples <- unname(unlist(.vtransform(
+            as.data.frame(samples, nm = auxmetadata$name),
             auxmetadata = auxmetadata,
             Rout = 'original',
             Cout = 'original',
@@ -603,7 +630,6 @@ qPr <- function(
             Oout = 'original',
             Nout = 'original',
             Bout = 'original',
-            variates <- auxmetadata$name,
             logjacobianOr = NULL)))
     }
 
@@ -667,7 +693,9 @@ qPr <- function(
             lprobX + params1[value, ,]
         ), na.rm = TRUE) / sumlpX)
     }
-    value <- unname(unlist(.vtransform(value,
+
+    value <- unname(unlist(.vtransform(
+        as.data.frame(value, nm = auxmetadata$name),
         auxmetadata = auxmetadata,
         Rout = 'original',
         Cout = 'original',
@@ -675,7 +703,6 @@ qPr <- function(
         Oout = 'original',
         Nout = 'original',
         Bout = 'original',
-        variates <- auxmetadata$name,
         logjacobianOr = NULL)))
 
 #### Calculate quantile for the frequency samples
@@ -708,7 +735,8 @@ qPr <- function(
             ), na.rm = TRUE) / sumlpX
             tocheck <- FF < pY
         }
-        samples <- unname(unlist(.vtransform(samples,
+        samples <- unname(unlist(.vtransform(
+            as.data.frame(samples, nm = auxmetadata$name),
             auxmetadata = auxmetadata,
             Rout = 'original',
             Cout = 'original',
@@ -716,7 +744,6 @@ qPr <- function(
             Oout = 'original',
             Nout = 'original',
             Bout = 'original',
-            variates <- auxmetadata$name,
             logjacobianOr = NULL)))
     }
 

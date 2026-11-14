@@ -6,7 +6,6 @@
 \usage{
 \method{hist}{prova_pr}(
   x,
-  subset = NULL,
   breaks = NULL,
   legend = "topright",
   lty = c(1, 2, 4, 3, 6, 5),
@@ -29,11 +28,9 @@
 \arguments{
 \item{x}{Object of class "prova_pr" (probability), obtained with \code{\link[=Pr]{Pr()}}.}
 
-\item{subset}{Named list or named vector: which variate values to display. For the variates corresponding to the names in this list, only the vector of values corresponding to that variate is displayed.}
-
 \item{breaks}{as in function \code{\link[graphics:hist]{graphics::hist()}}, or \code{NULL} (default). Value \code{NULL} determines bin width from the Monte Carlo accuracy (roughly speaking, each bin spans two standard deviations).}
 
-\item{legend}{One of the values \code{"bottomright"}, \code{"bottom"}, \code{"bottomleft"}, \code{"left"}, \code{"topleft"}, \code{"top"}, \code{"topright"}, \code{"right"}, \code{"center"} (see \code{\link[graphics:legend]{graphics::legend()}}): plot a legend at that position. A value \code{FALSE} or any other does not plot any legend. Default \code{"top"}.}
+\item{legend}{One of the values \code{'bottomright'}, \code{'bottom'}, \code{'bottomleft'}, \code{'left'}, \code{'topleft'}, \code{'top'}, \code{'topright'}, \code{'right'}, \code{'center'} (see \code{\link[graphics:legend]{graphics::legend()}}): plot a legend at that position. Value \code{FALSE} or \code{NA} does not plot any legend. Default \code{'topright'}.}
 
 \item{lty, lwd, col, alpha.f, xlab, ylab, xlim, ylim, main, grid, axes, add}{see analogous arguments in \code{\link[graphics:matplot]{graphics::matplot()}}}
 
@@ -56,13 +53,13 @@ The posterior probabilities calculated with the \code{\link[=Pr]{Pr()}} function
 The \code{hist()} method for a "prova_pr" (probability) object is a utility to visualize this kind of revisability, in the form of a distribution. This distribution is represented by a histogram formed from samples of revised proobabilities (or long-run frequencies). The bin size is chosen according to the Monte Carlo accuracy.
 }
 \examples{
-## Use the "prova_K" (knowledge) object 'Kexample',
+## Use the "K" object 'Kexample',
 ## calculated from the "penguins" dataset;
 ## variates: 'species' and 'bill_len'
 
 ## calculate the probability, and its revisability,
 ## for the value 'Adelie' of the "species" variate
-probs <- Pr(data.frame(species = 'Adelie'), Kexample)
+probs <- Pr(data.frame(species = 'Adelie'), NULL, Kexample)
 probs$value
 
 ## show the revisability of this probability; equivalently show

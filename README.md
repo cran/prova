@@ -1,26 +1,25 @@
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/prova)](https://CRAN.R-project.org/package=prova)
+[![CRAN downloads](https://cranlogs.r-pkg.org/badges/last-month/prova)](https://cran.r-project.org/package=prova)
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.17226082.svg)](https://doi.org/10.5281/zenodo.17226082)
 [![r-universe version](https://pglpm.r-universe.dev/prova/badges/version)](https://pglpm.r-universe.dev/prova)
 <!-- badges: end -->
 
 <img src="man/figures/prova_logo.jpg" alt="Ensemble of densities" width="100%"/>
 
-"prova" /'prɔva/ (Italian)
-
-- [(noun)](https://dictionary.cambridge.org/dictionary/italian-english/prova): test, trial, assessment, proof, evidence, sign, indication, try, attempt.
-- [(verb)](https://dictionary.cambridge.org/dictionary/italian-english/provare): test!, try out!, assess!, attempt!, prove!, demonstrate!, show!
+"prova" /'prɔva/ [*noun*](https://dictionary.cambridge.org/dictionary/italian-english/prova): test, trial, assessment, proof, evidence, sign, indication, try, attempt; [*verb*](https://dictionary.cambridge.org/dictionary/italian-english/provare): test!, try out!, assess!, attempt!, prove!, demonstrate!, show!
 
 
-# ***Prova***: <br> Probabilistic-statistical variate analysis <br> nonparametric and with automated Markov-chain Monte Carlo
+# ***Prova***: Probabilistic-statistical variate analysis
 
 ("What's a variate?" Answer here[^1])
 
-An R package to perform probabilistic and statistical data analysis and inference. These are its main features:
+A versatile R package for general-purpose probabilistic and statistical data analysis and inference, including specialized kinds of analysis. These are its main features:
 
+- **No modelling assumptions** such as gaussianity, linearity, or any other kind of parametric model. The analysis and inferences are fully [nonparametric](https://dictionary.apa.org/nonparametric).
+- **No assumptions about functional dependence** between data variates. The analysis and inferences are therefore more general than those by neural networks, random forests, regression trees, or similar algorithms.
+- **No approximations** such as Laplace's approximation, variational inference, and similar.
 - Any combination of **binary**, **nominal**, **ordinal**, **continuous**, **discrete** data. Continuous data can be bounded, unbounded, **censored**, and rounded.
-- **No modelling assumptions** such as gaussianity, linearity, or any other kind of model. The analysis and inferences are fully [nonparametric](https://dictionary.apa.org/nonparametric).
-- **No assumptions about functional dependence** between data variates. The analysis and inferences are therefore more general than those by neural networks, random forests, or similar machine-learning algorithms.
 - **Automatic [imputation](https://dictionary.apa.org/imputation)** of missing data: all sample data are used, even those that lacks some variate values. The imputation is done with a principled method (the marginalization rule of probability theory), rather than ad-hoc procedures.
 - Easy and straightforward **subgroup analyses** and **stratified analyses**, for any division of variates, with full statistical details.
 - **No hard-coded distinction between "predictor" and "predictand"/target variates** during learning. Any group of variates can be chosen as predictors, and any other group as targets, *on the fly* in each application, without need to re-learn from the training data.
@@ -34,7 +33,26 @@ The package essentially performs Bayesian nonparametric inference (also called "
 
 <br>
 
+Use examples (see literature below for concrete examples):
+
+- Inference and prediction, classification, regression.
+- Hypothesis testing.
+- Association studies.
+- Data imputation.
+- Subgroup analysis and stratified analysis.
+- Medical & clinical decision making.
+- Risk analysis.
+- Probability calibration of machine-learning algorithms.
+
+<br>
+
 ## Minimal example
+
+Load the package:
+
+```r
+library('prova')
+```
 
 Use the [R `penguins` dataset](https://stat.ethz.ch/R-manual/R-patched/library/datasets/html/penguins.html) (or download a shuffled version from [here](https://github.com/pglpm/prova/raw/main/vignettes/penguins_shuffled.csv)), together with the metadata `meta_penguins` available in **Prova**. Metadata contain the characteristics of the dataset's variates.
 
@@ -46,11 +64,11 @@ K <- learn(data = penguins, metadata = meta_penguins)
 
 The object `K` (for "Knowledge" or "Known") encodes what has been learnt from data and metadata.
 
-Ask a statistical question about the penguin population. For example: given the data we have collected, what is the probability that a *new* penguin from this population is of species *Adélie*, if its bill length is 45 mm? In symbols,
+Ask a statistical question about the penguin population. For example: given the data we have collected, what is the probability that a *new* penguin from this population is of species *Adélie*, if its bill length is 40 mm? In symbols,
 
 $$
 \mathrm{Pr}(\text{species = Adelie} \thinspace\vert\thinspace\mathopen{}
-\text{bill len = 45 mm}, K)
+\text{bill len = 40 mm}, K)
 $$
 
 where $K$ stands for the knowledge acquired from data and metadata. To answer this question, use the function `Pr()`, and print a summary of the result:
@@ -62,15 +80,15 @@ prob <- Pr(
 )
 
 print(prob)
-# , , |bill_len = 45
-#
+# , , |bill_len = 40
+# 
 #         probability
-# species  value   +/-     Q5.5%   Q25%    Q75%    Q94.5%
-#   Adelie 0.09857 0.00053 0.05337 0.07534 0.11893 0.1527
+# species  value   +/-     Q5.5%   Q25%    Q75%    Q94.5% 
+#   Adelie 0.94827 0.00049 0.91272 0.93652 0.96289 0.97634
 ```
-The answer is that there is roughly a 10% probability that a new penguin, among those with a 45 mm bill length, is of species *Adélie*.
+The answer is that there is roughly a 10% probability that a new penguin, among those with a 40 mm bill length, is of species *Adélie*.
 
-Now ask: what is the relative frequency of *Adélie* species *in the whole subpopulation* (including unsampled penguins), of penguins having bill length of 45 mm? This cannot be answered with certainty, because we have only a sample of the full population. But **Prova** can calculate the *probability distribution* for this full-population frequency. In fact, it has already been calculated by the function `Pr()` above, and we can visualize it with a plot:
+Now ask: what is the relative frequency of *Adélie* species *in the whole subpopulation* (including unsampled penguins), of penguins having bill length of 40 mm? This cannot be answered with certainty, because we have only a sample of the full population. But **Prova** can calculate the *probability distribution* for this full-population frequency. In fact, it has already been calculated by the function `Pr()` above, and we can visualize it with a plot:
 ```r
 hist(prob)
 ```
@@ -92,7 +110,12 @@ plot(invprob, col = 2)
 
 this probability distribution has a peak between 35 mm and 40 mm and it's slightly skewed.
 
-This distribution is not the *frequency* distribution of bill length in the whole subpopulation of *Adélie* penguins; the latter is uncertain because we have only a sample. But the plot above shows that the full-population frequency distribution is somewhere between the grey bands.
+This distribution is not the *frequency* distribution of bill length in the whole subpopulation of *Adélie* penguins: such distribution is uncertain because we have only a sample. But the plot above shows that this frequency distribution is somewhere between the widest coloured bands with roughly a 90% probability. Alternatively we can display this uncertainty with an ensemble plot of probable frequency distributions:
+```r
+plot(invprob, col = 2, spread = 'samples')
+```
+<img src="man/figures/README-plotens-1.svg" alt="probability distribution for bill length, ensemble plot" width="100%"/>
+
 
 </br>
 
